@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POATS - Secure Firebase App</title>
+    <title>POATS - Secure Firebase App with Supabase Storage</title>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -337,7 +339,8 @@
 
         .form-group input,
         .form-group textarea,
-        .form-group select {
+        .form-group select,
+        .form-group input[type="file"] {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #cccccc;
@@ -347,9 +350,58 @@
 
         .form-group input:focus,
         .form-group textarea:focus,
-        .form-group select:focus {
+        .form-group select:focus,
+        .form-group input[type="file"]:focus {
             outline: none;
             border-color: #0066cc;
+        }
+
+        .image-preview-container {
+            margin-top: 10px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px dashed #0066cc;
+            position: relative;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+        }
+
+        .preview-placeholder {
+            color: #999;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .preview-placeholder i {
+            font-size: 3rem;
+            color: #0066cc;
+            margin-bottom: 10px;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
         }
 
         .options-container {
@@ -419,6 +471,13 @@
             background: #000000;
             color: white;
             border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header i {
+            cursor: pointer;
         }
 
         .modal-body {
@@ -616,6 +675,15 @@
             padding-top: 20px;
             border-top: 1px solid #333;
         }
+
+        .poll-image {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin: 10px 0;
+            border: 2px solid #0066cc;
+        }
     </style>
 </head>
 <body>
@@ -686,7 +754,7 @@
                 <div id="pollsList"></div>
             </div>
 
-            <!-- Create Section -->
+            <!-- Create Section - UPDATED with Image Upload -->
             <div id="createSection" class="section">
                 <div style="background: white; border-radius: 16px; padding: 20px; border: 2px solid #000000;">
                     <h3 style="margin-bottom: 20px;">Create New Poll</h3>
@@ -701,6 +769,17 @@
                             <label>Description</label>
                             <textarea id="pollDescription" rows="2" placeholder="Add details..." maxlength="500"></textarea>
                             <small class="session-info" id="descCount">0/500</small>
+                        </div>
+                        
+                        <!-- NEW: Image Upload Field -->
+                        <div class="form-group">
+                            <label><i class="fas fa-image"></i> Poll Image (Optional)</label>
+                            <input type="file" id="pollImage" accept="image/*" onchange="previewImage(this)">
+                            <div id="imagePreviewContainer" class="image-preview-container" style="display: none;">
+                                <img id="imagePreview" class="image-preview" src="" alt="Preview">
+                                <button type="button" class="remove-image" onclick="removeSelectedImage()">×</button>
+                            </div>
+                            <small class="session-info">Supported formats: JPG, PNG, GIF (Max 5MB)</small>
                         </div>
                         
                         <div class="form-group">
@@ -850,6 +929,105 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
+
+        // ===== SUPABASE CONFIGURATION =====
+        // Replace these with your actual Supabase credentials
+        const SUPABASE_URL = 'https://pzwhqznvqmjvgugbnzgy.supabase.co'; // Replace with your Supabase URL
+        const SUPABASE_KEY = 'sb_publishable_TdywFipJUq-1Fen6X4cVeA_xTFgwToG'; // Replace with your Supabase anon key
+        const BUCKET_NAME = 'media'; // Replace with your bucket name
+        
+        // Initialize Supabase client with different name to avoid conflict with global supabase object
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ===== GLOBAL FUNCTIONS (defined outside DOMContentLoaded for global access) =====
+        
+        // Preview image function - called from onchange event
+        function previewImage(input) {
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            const preview = document.getElementById('imagePreview');
+            
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    showAlert('Image size must be less than 5MB');
+                    input.value = '';
+                    previewContainer.style.display = 'none';
+                    return;
+                }
+                
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    showAlert('Please upload an image file');
+                    input.value = '';
+                    previewContainer.style.display = 'none';
+                    return;
+                }
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    previewContainer.style.display = 'flex';
+                };
+                
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = '';
+                previewContainer.style.display = 'none';
+            }
+        }
+
+        // Remove selected image - called from onclick event
+        function removeSelectedImage() {
+            const imageInput = document.getElementById('pollImage');
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            const preview = document.getElementById('imagePreview');
+            
+            if (imageInput) {
+                imageInput.value = '';
+            }
+            
+            preview.src = '';
+            previewContainer.style.display = 'none';
+        }
+
+        // Upload image to Supabase using supabaseClient
+        async function uploadImageToSupabase(file) {
+            if (!file) return null;
+            
+            // Create a unique filename
+            const timestamp = Date.now();
+            const randomString = Math.random().toString(36).substring(2, 15);
+            const fileExt = file.name.split('.').pop();
+            const fileName = `poll-${timestamp}-${randomString}.${fileExt}`;
+            
+            try {
+                // Upload to Supabase Storage - using supabaseClient instead of supabase
+                const { data, error } = await supabaseClient.storage
+                    .from(BUCKET_NAME)
+                    .upload(fileName, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+                
+                if (error) {
+                    console.error('Supabase upload error:', error);
+                    throw new Error('Failed to upload image: ' + error.message);
+                }
+                
+                // Get public URL
+                const { data: urlData } = supabaseClient.storage
+                    .from(BUCKET_NAME)
+                    .getPublicUrl(fileName);
+                
+                return urlData.publicUrl;
+            } catch (error) {
+                console.error('Error uploading to Supabase:', error);
+                throw error;
+            }
+        }
 
         // ===== SECURITY ENHANCEMENTS =====
 
@@ -1111,7 +1289,14 @@
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
             });
-            event.currentTarget.classList.add('active');
+            
+            // Find and activate the corresponding nav item
+            const navItems = document.querySelectorAll('.nav-item');
+            if (sectionId === 'homeSection') navItems[0].classList.add('active');
+            else if (sectionId === 'pollsSection') navItems[1].classList.add('active');
+            else if (sectionId === 'createSection') navItems[2].classList.add('active');
+            else if (sectionId === 'profileSection') navItems[3].classList.add('active');
+            else if (sectionId === 'authSection') navItems[4].classList.add('active');
 
             if (sectionId === 'profileSection' && currentUser) {
                 loadUserProfile();
@@ -1180,6 +1365,7 @@
             });
         }
 
+        // ===== UPDATED: createPollCard with image support =====
         function createPollCard(poll) {
             const div = document.createElement('div');
             div.className = 'poll-card';
@@ -1187,6 +1373,10 @@
             
             const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
             const timeAgo = getTimeAgo(poll.createdAt);
+            
+            // Add image if exists
+            const imageHtml = poll.imageUrl ? 
+                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image">` : '';
             
             div.innerHTML = `
                 <div class="card-header">
@@ -1197,6 +1387,7 @@
                     </div>
                 </div>
                 <div class="poll-title">${escapeHtml(poll.title)}</div>
+                ${imageHtml}
                 <div class="poll-meta">
                     <span><i class="fas fa-tag"></i> ${escapeHtml(poll.category || 'general')}</span>
                     <span><i class="fas fa-vote-yea"></i> ${totalVotes} votes</span>
@@ -1208,6 +1399,7 @@
 
         // Helper function to escape HTML
         function escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
@@ -1246,6 +1438,7 @@
             document.getElementById('optionsCount').textContent = `${optionCount}/10 options`;
         }
 
+        // ===== UPDATED: Form submission with image upload =====
         document.getElementById('createPollForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1285,13 +1478,27 @@
                 return;
             }
             
+            // Get image file if present
+            const imageInput = document.getElementById('pollImage');
+            const imageFile = imageInput.files[0];
+            
             try {
                 // Disable button to prevent double submission
                 const btn = document.getElementById('createPollBtn');
                 btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
                 
-                await db.collection('polls').add({
+                let imageUrl = null;
+                
+                // Upload image to Supabase if present
+                if (imageFile) {
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading image...';
+                    imageUrl = await uploadImageToSupabase(imageFile);
+                }
+                
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating poll...';
+                
+                // Create poll in Firestore
+                const pollData = {
                     title,
                     description,
                     options,
@@ -1300,7 +1507,14 @@
                     creatorName: currentUser.name,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     totalVotes: 0
-                });
+                };
+                
+                // Add image URL if uploaded
+                if (imageUrl) {
+                    pollData.imageUrl = imageUrl;
+                }
+                
+                await db.collection('polls').add(pollData);
                 
                 // Update user's poll count
                 await db.collection('users').doc(currentUser.uid).update({
@@ -1313,6 +1527,10 @@
                 
                 showAlert('Poll created!');
                 e.target.reset();
+                
+                // Reset image preview
+                document.getElementById('imagePreviewContainer').style.display = 'none';
+                document.getElementById('imagePreview').src = '';
                 
                 // Reset options
                 document.getElementById('optionsContainer').innerHTML = '';
@@ -1332,7 +1550,7 @@
                 showSection('pollsSection');
             } catch (error) {
                 console.error('Error:', error);
-                showAlert('Failed to create poll');
+                showAlert('Failed to create poll: ' + error.message);
             } finally {
                 const btn = document.getElementById('createPollBtn');
                 btn.disabled = false;
@@ -1340,12 +1558,16 @@
             }
         });
 
-        // ===== VIEW POLL =====
+        // ===== UPDATED: VIEW POLL with image support =====
         function viewPoll(poll) {
             const modal = document.createElement('div');
             modal.className = 'modal';
             
             const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
+            
+            // Add image if exists
+            const imageHtml = poll.imageUrl ? 
+                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image" style="margin-bottom: 15px;">` : '';
             
             modal.innerHTML = `
                 <div class="modal-content">
@@ -1354,6 +1576,7 @@
                         <i class="fas fa-times" style="font-size: 1.5rem; cursor: pointer;" onclick="this.closest('.modal').remove()"></i>
                     </div>
                     <div class="modal-body">
+                        ${imageHtml}
                         <p style="margin-bottom: 20px;">${escapeHtml(poll.description || '')}</p>
                         
                         ${poll.options.map((opt, index) => `
@@ -1659,6 +1882,8 @@
         window.viewPoll = viewPoll;
         window.selectOption = selectOption;
         window.submitVote = submitVote;
+        window.previewImage = previewImage;
+        window.removeSelectedImage = removeSelectedImage;
     </script>
 </body>
 </html>
