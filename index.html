@@ -24,7 +24,7 @@
 
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            background: #e9ebee; /* Facebook background gray */
+            background: #e9ebee;
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -34,7 +34,7 @@
         .container {
             max-width: 500px;
             width: 100%;
-            background: #f0f2f5; /* Light Facebook gray */
+            background: #f0f2f5;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -42,7 +42,7 @@
         }
 
         .header {
-            background: #4267B2; /* Facebook blue */
+            background: #4267B2;
             color: white;
             padding: 12px 16px;
             position: sticky;
@@ -136,6 +136,32 @@
 
         .clear-search.active {
             display: block;
+        }
+
+        /* Feed Toggle (Global / Local) */
+        .feed-toggle {
+            display: flex;
+            gap: 8px;
+            margin: 8px 0 12px;
+            background: #e9ebee;
+            padding: 4px;
+            border-radius: 30px;
+        }
+        .feed-toggle-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            background: transparent;
+            color: #4b4f56;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .feed-toggle-btn.active {
+            background: #4267B2;
+            color: white;
         }
 
         .bottom-nav {
@@ -601,6 +627,10 @@
             max-height: 180px;
             object-fit: contain;
         }
+        .video-preview {
+            max-width: 100%;
+            max-height: 180px;
+        }
 
         .remove-image {
             position: absolute;
@@ -940,7 +970,7 @@
             margin-top: 4px;
         }
 
-        .poll-image {
+        .poll-image, .poll-video {
             width: 100%;
             max-height: 200px;
             object-fit: cover;
@@ -1032,7 +1062,7 @@
                 <i class="fas fa-exclamation-triangle"></i> Too many attempts. Please wait <span id="waitTime">60</span> seconds.
             </div>
 
-            <!-- Home Section - Simplified -->
+            <!-- Home Section -->
             <div id="homeSection" class="section">
                 <!-- Search Bar -->
                 <div class="search-container">
@@ -1041,6 +1071,12 @@
                         <input type="text" class="search-input" id="searchInput" placeholder="Search by username..." oninput="handleSearchInput(this.value)">
                         <span class="clear-search" id="clearSearch" onclick="clearSearch()"><i class="fas fa-times"></i></span>
                     </div>
+                </div>
+
+                <!-- Feed Toggle (Global / Local) -->
+                <div class="feed-toggle">
+                    <button class="feed-toggle-btn active" id="feedGlobalBtn" onclick="setFeedType('global')">Global</button>
+                    <button class="feed-toggle-btn" id="feedLocalBtn" onclick="setFeedType('local')">Local</button>
                 </div>
 
                 <!-- Feed Header -->
@@ -1076,15 +1112,24 @@
                             <small class="session-info" id="descCount">0/500</small>
                         </div>
                         
-                        <!-- Image Upload Field -->
+                        <!-- Media Type Selection -->
                         <div class="form-group">
-                            <label><i class="fas fa-image"></i> Poll Image (Optional)</label>
-                            <input type="file" id="pollImage" accept="image/*" onchange="previewImage(this)">
-                            <div id="imagePreviewContainer" class="image-preview-container" style="display: none;">
-                                <img id="imagePreview" class="image-preview" src="" alt="Preview">
-                                <button type="button" class="remove-image" onclick="removeSelectedImage()">×</button>
+                            <label><i class="fas fa-photo-video"></i> Media Type</label>
+                            <select id="mediaType" onchange="toggleMediaUpload(this.value)">
+                                <option value="image">Image (max 1MB)</option>
+                                <option value="video">Video (max 3MB)</option>
+                            </select>
+                        </div>
+
+                        <!-- Media Upload Field -->
+                        <div class="form-group">
+                            <label id="mediaUploadLabel"><i class="fas fa-image"></i> Upload Image</label>
+                            <input type="file" id="pollMedia" accept="image/*,video/*" onchange="previewMedia(this)">
+                            <div id="mediaPreviewContainer" class="image-preview-container" style="display: none;">
+                                <!-- Preview will be injected here dynamically -->
+                                <button type="button" class="remove-image" onclick="removeSelectedMedia()">×</button>
                             </div>
-                            <small class="session-info">Supported formats: JPG, PNG, GIF (Max 5MB)</small>
+                            <small class="session-info" id="mediaSizeHint">Supported: JPG, PNG, GIF (Max 1MB)</small>
                         </div>
                         
                         <div class="form-group">
@@ -1305,23 +1350,53 @@
 
         // ===== GLOBAL FUNCTIONS =====
         
-        // Preview image function
-        function previewImage(input) {
-            const previewContainer = document.getElementById('imagePreviewContainer');
-            const preview = document.getElementById('imagePreview');
+        // Toggle media upload label based on selected type
+        function toggleMediaUpload(type) {
+            const label = document.getElementById('mediaUploadLabel');
+            const hint = document.getElementById('mediaSizeHint');
+            const fileInput = document.getElementById('pollMedia');
+            // Clear previous selection
+            fileInput.value = '';
+            removeSelectedMedia();
+            
+            if (type === 'image') {
+                label.innerHTML = '<i class="fas fa-image"></i> Upload Image';
+                fileInput.accept = 'image/*';
+                hint.textContent = 'Supported: JPG, PNG, GIF (Max 1MB)';
+            } else {
+                label.innerHTML = '<i class="fas fa-video"></i> Upload Video';
+                fileInput.accept = 'video/*';
+                hint.textContent = 'Supported: MP4, WebM, etc. (Max 3MB)';
+            }
+        }
+
+        // Preview media function
+        function previewMedia(input) {
+            const previewContainer = document.getElementById('mediaPreviewContainer');
+            const mediaType = document.getElementById('mediaType').value;
+            
+            // Clear previous preview
+            previewContainer.innerHTML = '<button type="button" class="remove-image" onclick="removeSelectedMedia()">×</button>';
             
             if (input.files && input.files[0]) {
                 const file = input.files[0];
+                const maxSize = mediaType === 'image' ? 1 * 1024 * 1024 : 3 * 1024 * 1024;
                 
-                if (file.size > 5 * 1024 * 1024) {
-                    showAlert('Image size must be less than 5MB');
+                if (file.size > maxSize) {
+                    showAlert(`File size must be less than ${mediaType === 'image' ? '1MB' : '3MB'}`);
                     input.value = '';
                     previewContainer.style.display = 'none';
                     return;
                 }
                 
-                if (!file.type.startsWith('image/')) {
+                if (mediaType === 'image' && !file.type.startsWith('image/')) {
                     showAlert('Please upload an image file');
+                    input.value = '';
+                    previewContainer.style.display = 'none';
+                    return;
+                }
+                if (mediaType === 'video' && !file.type.startsWith('video/')) {
+                    showAlert('Please upload a video file');
                     input.value = '';
                     previewContainer.style.display = 'none';
                     return;
@@ -1330,37 +1405,46 @@
                 const reader = new FileReader();
                 
                 reader.onload = function(e) {
-                    preview.src = e.target.result;
+                    let previewElement;
+                    if (mediaType === 'image') {
+                        previewElement = document.createElement('img');
+                        previewElement.className = 'image-preview';
+                        previewElement.src = e.target.result;
+                    } else {
+                        previewElement = document.createElement('video');
+                        previewElement.className = 'video-preview';
+                        previewElement.src = e.target.result;
+                        previewElement.controls = true;
+                    }
+                    previewContainer.appendChild(previewElement);
                     previewContainer.style.display = 'flex';
                 };
                 
                 reader.readAsDataURL(file);
             } else {
-                preview.src = '';
                 previewContainer.style.display = 'none';
             }
         }
 
-        function removeSelectedImage() {
-            const imageInput = document.getElementById('pollImage');
-            const previewContainer = document.getElementById('imagePreviewContainer');
-            const preview = document.getElementById('imagePreview');
+        function removeSelectedMedia() {
+            const mediaInput = document.getElementById('pollMedia');
+            const previewContainer = document.getElementById('mediaPreviewContainer');
             
-            if (imageInput) {
-                imageInput.value = '';
+            if (mediaInput) {
+                mediaInput.value = '';
             }
             
-            preview.src = '';
+            previewContainer.innerHTML = '<button type="button" class="remove-image" onclick="removeSelectedMedia()">×</button>';
             previewContainer.style.display = 'none';
         }
 
-        async function uploadImageToSupabase(file) {
+        async function uploadMediaToSupabase(file, mediaType) {
             if (!file) return null;
             
             const timestamp = Date.now();
             const randomString = Math.random().toString(36).substring(2, 15);
             const fileExt = file.name.split('.').pop();
-            const fileName = `poll-${timestamp}-${randomString}.${fileExt}`;
+            const fileName = `poll-${mediaType}-${timestamp}-${randomString}.${fileExt}`;
             
             try {
                 const { data, error } = await supabaseClient.storage
@@ -1372,7 +1456,7 @@
                 
                 if (error) {
                     console.error('Supabase upload error:', error);
-                    throw new Error('Failed to upload image: ' + error.message);
+                    throw new Error('Failed to upload media: ' + error.message);
                 }
                 
                 const { data: urlData } = supabaseClient.storage
@@ -1386,8 +1470,7 @@
             }
         }
 
-        // ===== SECURITY ENHANCEMENTS =====
-
+        // ===== SECURITY ENHANCEMENTS (unchanged) =====
         const rateLimits = {
             login: { count: 0, lastAttempt: 0, blockedUntil: 0 },
             signup: { count: 0, lastAttempt: 0, blockedUntil: 0 },
@@ -1491,6 +1574,7 @@
         let allUsers = [];
         let optionCount = 2;
         let currentSearchTerm = '';
+        let currentFeedType = 'global'; // 'global' or 'local'
 
         // ===== SEARCH FUNCTIONS =====
         function handleSearchInput(value) {
@@ -1507,7 +1591,7 @@
             } else {
                 clearBtn.classList.remove('active');
                 searchBadge.style.display = 'none';
-                loadRandomizedFeed();
+                loadFeed();
             }
         }
 
@@ -1521,11 +1605,13 @@
             const feedContainer = document.getElementById('feedContainer');
             
             if (!searchTerm) {
-                loadRandomizedFeed();
+                loadFeed();
                 return;
             }
             
-            const filteredPolls = allPolls.filter(poll => 
+            // Get current feed polls (respect global/local filter)
+            const basePolls = getFilteredPolls();
+            const filteredPolls = basePolls.filter(poll => 
                 poll.creatorName && poll.creatorName.toLowerCase().includes(searchTerm)
             );
             
@@ -1540,7 +1626,30 @@
             });
         }
 
-        // ===== COMMENT FUNCTIONS =====
+        // ===== FEED TYPE FUNCTIONS =====
+        function setFeedType(type) {
+            currentFeedType = type;
+            // Update UI
+            document.getElementById('feedGlobalBtn').classList.toggle('active', type === 'global');
+            document.getElementById('feedLocalBtn').classList.toggle('active', type === 'local');
+            // Reload feed
+            if (currentSearchTerm) {
+                searchUserPosts(currentSearchTerm);
+            } else {
+                loadFeed();
+            }
+        }
+
+        function getFilteredPolls() {
+            if (currentFeedType === 'global' || !currentUser) {
+                return allPolls; // Global or not logged in
+            } else {
+                // Local: filter by current user's country
+                return allPolls.filter(poll => poll.country === currentUser.country);
+            }
+        }
+
+        // ===== COMMENT FUNCTIONS (unchanged) =====
         async function loadComments(pollId, commentsContainer) {
             try {
                 const snapshot = await db.collection('polls').doc(pollId)
@@ -1610,8 +1719,6 @@
                 return false;
             }
         }
-
-        // ===== FOLLOW FUNCTIONS (REMOVED) =====
 
         // ===== GET USER STATS (only polls and impact) =====
         async function getUserImpact(userId) {
@@ -1801,7 +1908,7 @@
                 if (document.getElementById('profileSection').classList.contains('active-section')) {
                     loadUserProfile();
                 } else {
-                    loadRandomizedFeed();
+                    loadFeed();
                 }
                 
                 return true;
@@ -1809,6 +1916,40 @@
                 console.error('Error deleting poll:', error);
                 showAlert('Failed to delete poll: ' + error.message);
                 return false;
+            }
+        }
+
+        // ===== DELETE OLDEST POLL IF TOTAL >= 300 =====
+        async function enforcePollLimit() {
+            try {
+                const snapshot = await db.collection('polls')
+                    .orderBy('createdAt', 'asc')
+                    .get();
+                const total = snapshot.size;
+                if (total >= 300) {
+                    // Find oldest poll (first in ascending order)
+                    const oldestDoc = snapshot.docs[0];
+                    const oldestPoll = oldestDoc.data();
+                    const oldestId = oldestDoc.id;
+                    
+                    // Delete its comments first
+                    const comments = await oldestDoc.ref.collection('comments').get();
+                    const batch = db.batch();
+                    comments.docs.forEach(doc => batch.delete(doc.ref));
+                    batch.delete(oldestDoc.ref);
+                    await batch.commit();
+                    
+                    // Decrement the creator's poll count
+                    if (oldestPoll.createdBy) {
+                        await db.collection('users').doc(oldestPoll.createdBy).update({
+                            polls: firebase.firestore.FieldValue.increment(-1)
+                        });
+                    }
+                    
+                    console.log('Deleted oldest poll to stay under 300 limit');
+                }
+            } catch (error) {
+                console.error('Error enforcing poll limit:', error);
             }
         }
 
@@ -1897,8 +2038,8 @@
                 document.getElementById('loadingState').style.display = 'none';
                 showSection('homeSection');
                 
-                // Load randomized feed
-                loadRandomizedFeed();
+                // Load feed
+                loadFeed();
             });
 
             // Initialize options
@@ -1931,7 +2072,7 @@
                     if (currentSearchTerm) {
                         searchUserPosts(currentSearchTerm);
                     } else {
-                        loadRandomizedFeed();
+                        loadFeed();
                     }
                 }
             } catch (error) {
@@ -1940,17 +2081,22 @@
             }
         }
 
-        // ===== RANDOMIZED FEED FUNCTION =====
-        function loadRandomizedFeed() {
+        // ===== FEED LOAD FUNCTION =====
+        function loadFeed() {
             const feedContainer = document.getElementById('feedContainer');
+            const filteredPolls = getFilteredPolls();
             
-            if (allPolls.length === 0) {
-                feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet</p><button class="btn btn-primary" style="margin-top: 15px;" onclick="showSection(\'createSection\')">Create the First Poll</button></div>';
+            if (filteredPolls.length === 0) {
+                if (currentFeedType === 'local' && currentUser) {
+                    feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-globe"></i><p>No polls in your country yet.</p></div>';
+                } else {
+                    feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet</p><button class="btn btn-primary" style="margin-top: 15px;" onclick="showSection(\'createSection\')">Create the First Poll</button></div>';
+                }
                 return;
             }
             
             // Create a copy and shuffle using randomWeight
-            const shuffledPolls = [...allPolls].sort((a, b) => {
+            const shuffledPolls = [...filteredPolls].sort((a, b) => {
                 const weightA = a.randomWeight || Math.random();
                 const weightB = b.randomWeight || Math.random();
                 return weightA - weightB;
@@ -2007,12 +2153,12 @@
                 if (currentSearchTerm) {
                     searchUserPosts(currentSearchTerm);
                 } else {
-                    loadRandomizedFeed();
+                    loadFeed();
                 }
             }
         }
 
-        // ===== PROFILE FUNCTIONS =====
+        // ===== PROFILE FUNCTIONS (unchanged) =====
         async function loadUserProfile() {
             if (!currentUser) return;
             
@@ -2039,7 +2185,7 @@
             }
         }
 
-        // ===== PROFILE POLL CARD WITH STATS =====
+        // ===== PROFILE POLL CARD WITH STATS (updated for media) =====
         function createProfilePollCard(poll, isPublic = false) {
             const div = document.createElement('div');
             div.className = 'poll-card';
@@ -2047,8 +2193,14 @@
             const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
             const timeAgo = getTimeAgo(poll.createdAt);
             
-            const imageHtml = poll.imageUrl ? 
-                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image">` : '';
+            let mediaHtml = '';
+            if (poll.mediaUrl) {
+                if (poll.mediaType === 'image') {
+                    mediaHtml = `<img src="${escapeHtml(poll.mediaUrl)}" alt="Poll image" class="poll-image">`;
+                } else if (poll.mediaType === 'video') {
+                    mediaHtml = `<video src="${escapeHtml(poll.mediaUrl)}" controls class="poll-video"></video>`;
+                }
+            }
             
             const categoryTag = poll.category && poll.category !== 'All' ? 
                 `<span class="category-tag"><i class="fas fa-tag"></i> ${escapeHtml(poll.category)}</span>` : '';
@@ -2064,7 +2216,7 @@
                     </div>
                 </div>
                 <div class="poll-title">${escapeHtml(poll.title)}</div>
-                ${imageHtml}
+                ${mediaHtml}
                 <div class="poll-meta">
                     ${categoryTag}
                     <span><i class="fas fa-vote-yea"></i> ${totalVotes} votes</span>
@@ -2107,7 +2259,7 @@
             // Initialize mini chart after element is added to DOM
             setTimeout(() => {
                 const canvasId = `miniChart-${poll.id}`;
-                destroyChart(canvasId); // Destroy any existing chart on this canvas
+                destroyChart(canvasId);
                 const ctx = document.getElementById(canvasId)?.getContext('2d');
                 if (ctx && poll.options) {
                     new Chart(ctx, {
@@ -2131,7 +2283,7 @@
             return div;
         }
 
-        // ===== VIEW POLL STATS =====
+        // ===== VIEW POLL STATS (updated for media) =====
         function viewPollStats(pollId) {
             const poll = allPolls.find(p => p.id === pollId);
             if (!poll) return;
@@ -2141,8 +2293,14 @@
             
             const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
             
-            const imageHtml = poll.imageUrl ? 
-                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image" style="margin-bottom: 15px;">` : '';
+            let mediaHtml = '';
+            if (poll.mediaUrl) {
+                if (poll.mediaType === 'image') {
+                    mediaHtml = `<img src="${escapeHtml(poll.mediaUrl)}" alt="Poll image" class="poll-image" style="margin-bottom: 15px;">`;
+                } else if (poll.mediaType === 'video') {
+                    mediaHtml = `<video src="${escapeHtml(poll.mediaUrl)}" controls class="poll-video" style="margin-bottom: 15px;"></video>`;
+                }
+            }
             
             const categoryTag = poll.category && poll.category !== 'All' ? 
                 `<span class="category-tag" style="margin-bottom: 10px; display: inline-block;"><i class="fas fa-tag"></i> ${escapeHtml(poll.category)}</span>` : '';
@@ -2155,7 +2313,7 @@
                     </div>
                     <div class="modal-body">
                         ${categoryTag}
-                        ${imageHtml}
+                        ${mediaHtml}
                         <p style="margin-bottom: 20px;">${escapeHtml(poll.description || '')}</p>
                         
                         <div class="poll-stats-card" style="margin-bottom: 20px;">
@@ -2199,7 +2357,6 @@
             
             setTimeout(() => {
                 const canvasId = `statsChart-${poll.id}`;
-                // Destroy existing chart if any
                 if (Chart.getChart(canvasId)) {
                     Chart.getChart(canvasId).destroy();
                 }
@@ -2254,8 +2411,14 @@
             const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
             const timeAgo = getTimeAgo(poll.createdAt);
             
-            const imageHtml = poll.imageUrl ? 
-                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image">` : '';
+            let mediaHtml = '';
+            if (poll.mediaUrl) {
+                if (poll.mediaType === 'image') {
+                    mediaHtml = `<img src="${escapeHtml(poll.mediaUrl)}" alt="Poll image" class="poll-image">`;
+                } else if (poll.mediaType === 'video') {
+                    mediaHtml = `<video src="${escapeHtml(poll.mediaUrl)}" controls class="poll-video"></video>`;
+                }
+            }
             
             const categoryTag = poll.category && poll.category !== 'All' ? 
                 `<span class="category-tag"><i class="fas fa-tag"></i> ${escapeHtml(poll.category)}</span>` : '';
@@ -2271,7 +2434,7 @@
                     </div>
                 </div>
                 <div class="poll-title">${escapeHtml(poll.title)}</div>
-                ${imageHtml}
+                ${mediaHtml}
                 <div class="poll-meta">
                     ${categoryTag}
                     <span><i class="fas fa-vote-yea"></i> ${totalVotes} votes</span>
@@ -2289,7 +2452,7 @@
             return div;
         }
 
-        // View poll with comments
+        // View poll with comments (updated for media)
         function viewPollWithComments(pollId) {
             const poll = allPolls.find(p => p.id === pollId);
             if (!poll) return;
@@ -2302,8 +2465,14 @@
             
             const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
             
-            const imageHtml = poll.imageUrl ? 
-                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image" style="margin-bottom: 15px;">` : '';
+            let mediaHtml = '';
+            if (poll.mediaUrl) {
+                if (poll.mediaType === 'image') {
+                    mediaHtml = `<img src="${escapeHtml(poll.mediaUrl)}" alt="Poll image" class="poll-image" style="margin-bottom: 15px;">`;
+                } else if (poll.mediaType === 'video') {
+                    mediaHtml = `<video src="${escapeHtml(poll.mediaUrl)}" controls class="poll-video" style="margin-bottom: 15px;"></video>`;
+                }
+            }
             
             const categoryTag = poll.category && poll.category !== 'All' ? 
                 `<span class="category-tag" style="margin-bottom: 10px; display: inline-block;"><i class="fas fa-tag"></i> ${escapeHtml(poll.category)}</span>` : '';
@@ -2316,7 +2485,7 @@
                     </div>
                     <div class="modal-body">
                         ${categoryTag}
-                        ${imageHtml}
+                        ${mediaHtml}
                         <p style="margin-bottom: 20px;">${escapeHtml(poll.description || '')}</p>
                         
                         ${poll.options.map((opt, index) => `
@@ -2369,7 +2538,7 @@
             
             setTimeout(() => {
                 const canvasId = `pollChart-${poll.id}`;
-                destroyChart(canvasId); // Destroy any existing chart on this canvas
+                destroyChart(canvasId);
                 const ctx = document.getElementById(canvasId)?.getContext('2d');
                 if (ctx && poll.options) {
                     new Chart(ctx, {
@@ -2392,7 +2561,7 @@
             }, 100);
         }
 
-        // Submit comment function
+        // Submit comment function (unchanged)
         async function submitComment(pollId) {
             const input = document.getElementById(`comment-input-${pollId}`);
             const text = input.value.trim();
@@ -2476,14 +2645,14 @@
                 showAlert('Vote recorded!');
                 document.querySelector('.modal').remove();
                 await loadPolls();
-                loadRandomizedFeed();
+                loadFeed();
             } catch (error) {
                 console.error('Error voting:', error);
                 showAlert('Failed to record vote');
             }
         }
 
-        // ===== AUTH FUNCTIONS =====
+        // ===== AUTH FUNCTIONS (unchanged) =====
         function switchAuthTab(tab) {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
@@ -2712,6 +2881,7 @@
             const title = sanitizeInput(document.getElementById('pollTitle').value);
             const description = sanitizeInput(document.getElementById('pollDescription').value);
             const category = document.getElementById('pollCategory').value;
+            const mediaType = document.getElementById('mediaType').value; // 'image' or 'video'
             
             if (title.length < 5) {
                 showAlert('Title must be at least 5 characters');
@@ -2731,18 +2901,18 @@
                 return;
             }
             
-            const imageInput = document.getElementById('pollImage');
-            const imageFile = imageInput.files[0];
+            const mediaInput = document.getElementById('pollMedia');
+            const mediaFile = mediaInput.files[0];
             
             try {
                 const btn = document.getElementById('createPollBtn');
                 btn.disabled = true;
                 
-                let imageUrl = null;
+                let mediaUrl = null;
                 
-                if (imageFile) {
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading image...';
-                    imageUrl = await uploadImageToSupabase(imageFile);
+                if (mediaFile) {
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading media...';
+                    mediaUrl = await uploadMediaToSupabase(mediaFile, mediaType);
                 }
                 
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating poll...';
@@ -2761,14 +2931,18 @@
                     totalVotes: 0,
                     commentCount: 0,
                     country: currentUser.country || 'Global',
-                    randomWeight: randomWeight
+                    randomWeight: randomWeight,
+                    mediaType: mediaType // store media type
                 };
                 
-                if (imageUrl) {
-                    pollData.imageUrl = imageUrl;
+                if (mediaUrl) {
+                    pollData.mediaUrl = mediaUrl;
                 }
                 
                 await db.collection('polls').add(pollData);
+                
+                // Enforce 300 poll limit: delete oldest if needed
+                await enforcePollLimit();
                 
                 await db.collection('users').doc(currentUser.uid).update({
                     polls: firebase.firestore.FieldValue.increment(1)
@@ -2782,8 +2956,9 @@
                 showAlert('Poll created!');
                 e.target.reset();
                 
-                document.getElementById('imagePreviewContainer').style.display = 'none';
-                document.getElementById('imagePreview').src = '';
+                // Reset media preview
+                document.getElementById('mediaPreviewContainer').style.display = 'none';
+                document.getElementById('mediaPreviewContainer').innerHTML = '<button type="button" class="remove-image" onclick="removeSelectedMedia()">×</button>';
                 
                 document.getElementById('optionsContainer').innerHTML = '';
                 optionCount = 0;
@@ -2798,7 +2973,7 @@
                 }
                 
                 showSection('homeSection');
-                loadRandomizedFeed();
+                loadFeed();
             } catch (error) {
                 console.error('Error:', error);
                 showAlert('Failed to create poll: ' + error.message);
@@ -2822,9 +2997,11 @@
         window.viewPollWithComments = viewPollWithComments;
         window.selectOption = selectOption;
         window.submitVote = submitVote;
-        window.previewImage = previewImage;
-        window.removeSelectedImage = removeSelectedImage;
-        window.loadRandomizedFeed = loadRandomizedFeed;
+        window.previewMedia = previewMedia;
+        window.removeSelectedMedia = removeSelectedMedia;
+        window.toggleMediaUpload = toggleMediaUpload;
+        window.loadFeed = loadFeed;
+        window.setFeedType = setFeedType;
         window.handleSearchInput = handleSearchInput;
         window.clearSearch = clearSearch;
         window.viewPollStats = viewPollStats;
