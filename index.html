@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POATS - Secure Firebase App with Supabase Storage</title>
+    <title>POATS - Social Voting Platform</title>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Firebase SDKs -->
@@ -15,7 +15,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* All your existing CSS remains the same */
+        /* Facebook Lite UI - clean, simple, blue/white theme */
         * {
             margin: 0;
             padding: 0;
@@ -23,8 +23,8 @@
         }
 
         body {
-            font-family: 'Times New Roman', Times, serif;
-            background: #000000;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            background: #e9ebee; /* Facebook background gray */
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -34,59 +34,118 @@
         .container {
             max-width: 500px;
             width: 100%;
-            background: #ffffff;
+            background: #f0f2f5; /* Light Facebook gray */
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 0 30px rgba(0, 102, 204, 0.3);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
 
         .header {
-            background: #000000;
+            background: #4267B2; /* Facebook blue */
             color: white;
-            padding: 16px 20px;
+            padding: 12px 16px;
             position: sticky;
             top: 0;
             z-index: 100;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 3px solid #0066cc;
+            border-bottom: none;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
         .header h1 {
-            font-size: 1.8rem;
+            font-size: 1.6rem;
+            font-weight: 600;
             color: white;
         }
 
         .header h1 i {
-            color: #0066cc;
-            margin-right: 8px;
+            color: white;
+            margin-right: 6px;
         }
 
         .header-actions {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             align-items: center;
         }
 
         .user-badge {
-            background: #0066cc;
+            background: rgba(255,255,255,0.2);
             color: white;
-            padding: 5px 15px;
-            border-radius: 30px;
+            padding: 6px 14px;
+            border-radius: 20px;
             font-size: 0.9rem;
             cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .user-badge:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Search Bar Styles */
+        .search-container {
+            padding: 12px 0;
+            background: #f0f2f5;
+            margin-bottom: 8px;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #dddfe2;
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .search-box:focus-within {
+            border-color: #4267B2;
+            box-shadow: 0 0 0 1px #4267B2;
+        }
+
+        .search-icon {
+            padding: 10px 12px;
+            background: white;
+            color: #8d949e;
+            border-right: 1px solid #dddfe2;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: none;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .clear-search {
+            padding: 10px 12px;
+            background: white;
+            color: #90949c;
+            cursor: pointer;
+            border: none;
+            font-size: 1.1rem;
+            display: none;
+        }
+
+        .clear-search.active {
+            display: block;
         }
 
         .bottom-nav {
             position: sticky;
             bottom: 0;
-            background: #000000;
+            background: white;
             display: flex;
             justify-content: space-around;
-            padding: 8px 0;
-            border-top: 2px solid #0066cc;
+            padding: 6px 0 4px;
+            border-top: 1px solid #dddfe2;
             z-index: 100;
         }
 
@@ -94,34 +153,40 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: #ffffff;
+            color: #8d949e;
             font-size: 0.7rem;
-            padding: 8px 16px;
-            border-radius: 30px;
+            padding: 6px 12px;
+            border-radius: 0;
             cursor: pointer;
             background: transparent;
             border: none;
-            transition: all 0.3s;
+            transition: color 0.2s;
         }
 
         .nav-item i {
             font-size: 1.5rem;
             margin-bottom: 2px;
-            color: #ffffff;
+            color: #8d949e;
         }
 
         .nav-item.active {
-            background: #0066cc;
+            color: #4267B2;
+            border-bottom: 2px solid #4267B2;
+        }
+
+        .nav-item.active i {
+            color: #4267B2;
         }
 
         .nav-item span {
             font-size: 0.7rem;
+            font-weight: 500;
         }
 
         .main-content {
             flex: 1;
-            padding: 16px;
-            background: #f5f5f5;
+            padding: 12px;
+            background: #f0f2f5;
             overflow-y: auto;
         }
 
@@ -131,22 +196,25 @@
 
         .section.active-section {
             display: block;
-            animation: fadeIn 0.3s ease;
+            animation: fadeIn 0.2s ease;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0.6; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         .loading {
             text-align: center;
             padding: 40px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dddfe2;
         }
 
         .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #0066cc;
+            border: 3px solid #e9ebee;
+            border-top: 3px solid #4267B2;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -159,171 +227,326 @@
             100% { transform: rotate(360deg); }
         }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
+        .feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
 
-        .feature-card {
-            background: #000000;
-            border-radius: 16px;
-            padding: 20px 15px;
-            text-align: center;
-            border: 2px solid #0066cc;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0, 102, 204, 0.3);
-        }
-
-        .feature-card i {
-            font-size: 2.5rem;
-            color: #0066cc;
-            margin-bottom: 10px;
-        }
-
-        .feature-card h3 {
-            color: white;
+        .feed-title {
             font-size: 1.2rem;
+            font-weight: 600;
+            color: #1c1e21;
+            border-left: 3px solid #4267B2;
+            padding-left: 8px;
         }
 
-        .quick-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin: 20px 0;
-        }
-
-        .quick-stat {
-            background: white;
-            border-radius: 12px;
-            padding: 15px 5px;
-            text-align: center;
-            border: 2px solid #000000;
-        }
-
-        .quick-stat .number {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #0066cc;
-        }
-
-        .quick-stat .label {
-            color: #333;
-            font-size: 0.7rem;
+        .search-results-badge {
+            background: #4267B2;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
 
         .poll-card {
             background: white;
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 16px;
-            border: 2px solid #000000;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 12px;
+            border: 1px solid #dddfe2;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.1s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
 
         .poll-card:hover {
-            transform: translateY(-3px);
-            border-color: #0066cc;
-            box-shadow: 0 10px 25px rgba(0, 102, 204, 0.2);
+            border-color: #4267B2;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .card-header {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
+            gap: 10px;
+            margin-bottom: 10px;
         }
 
         .avatar {
-            width: 45px;
-            height: 45px;
-            background: #000000;
+            width: 40px;
+            height: 40px;
+            background: #4267B2;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 1.2rem;
-            border: 2px solid #0066cc;
+            font-size: 1.1rem;
+            border: 2px solid white;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .avatar:hover {
+            opacity: 0.9;
+        }
+
+        .user-info {
+            flex: 1;
         }
 
         .user-info h4 {
-            color: #000000;
-            font-size: 1rem;
+            color: #1c1e21;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .username-link {
+            color: #385898;
+            cursor: pointer;
+            font-weight: 600;
+            transition: color 0.1s;
+        }
+
+        .username-link:hover {
+            text-decoration: underline;
         }
 
         .time {
-            color: #0066cc;
-            font-size: 0.7rem;
+            color: #90949c;
+            font-size: 0.65rem;
+            margin-top: 2px;
         }
 
         .poll-title {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 600;
-            color: #000000;
+            color: #1c1e21;
             margin-bottom: 8px;
+            line-height: 1.3;
         }
 
         .poll-meta {
             display: flex;
-            gap: 20px;
-            margin: 15px 0;
-            padding: 10px 0;
-            border-top: 2px solid #000000;
-            border-bottom: 2px solid #000000;
-            color: #333;
-            font-size: 0.8rem;
+            gap: 16px;
+            margin: 12px 0 8px;
+            padding: 6px 0;
+            border-top: 1px solid #e9ebee;
+            border-bottom: 1px solid #e9ebee;
+            color: #616770;
+            font-size: 0.75rem;
+            flex-wrap: wrap;
         }
 
         .poll-meta i {
-            color: #0066cc;
+            color: #4267B2;
+            margin-right: 4px;
+        }
+
+        .poll-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: none;
+            color: #4267B2;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            transition: background 0.2s;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-weight: 500;
+        }
+
+        .action-btn:hover {
+            background: #e7f3ff;
+        }
+
+        .action-btn i {
+            font-size: 1.1rem;
+        }
+
+        .comment-count {
+            background: #4267B2;
+            color: white;
+            padding: 1px 6px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            margin-left: 5px;
+            font-weight: 600;
+        }
+
+        .category-tag {
+            background: #e9ebee;
+            color: #4b4f56;
+            padding: 3px 8px;
+            border-radius: 16px;
+            font-size: 0.65rem;
+            display: inline-block;
+            margin-right: 6px;
+            font-weight: 500;
         }
 
         .btn {
-            padding: 10px 20px;
+            padding: 10px 16px;
             border: none;
-            border-radius: 30px;
+            border-radius: 6px;
             font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background 0.2s;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            font-family: 'Times New Roman', Times, serif;
+            font-family: 'Helvetica', 'Arial', sans-serif;
             width: 100%;
         }
 
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            width: auto;
+        }
+
         .btn-primary {
-            background: #0066cc;
+            background: #4267B2;
             color: white;
-            border: 2px solid #0066cc;
+            border: none;
         }
 
         .btn-primary:hover {
-            background: #004999;
-            transform: translateY(-2px);
+            background: #365899;
         }
 
         .btn-secondary {
-            background: #000000;
-            color: white;
-            border: 2px solid #0066cc;
+            background: #e9ebee;
+            color: #4b4f56;
+            border: 1px solid #ccd0d5;
+        }
+
+        .btn-secondary:hover {
+            background: #dddfe2;
         }
 
         .btn-danger {
-            background: #dc3545;
+            background: #fa3e3e;
             color: white;
-            border: 2px solid #dc3545;
+            border: none;
+        }
+        .btn-danger:hover {
+            background: #e03535;
+        }
+
+        /* Profile Actions */
+        .profile-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .profile-action-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: background 0.2s;
+        }
+
+        .profile-action-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .profile-action-btn.danger {
+            background: rgba(250,62,62,0.8);
+        }
+        .profile-action-btn.danger:hover {
+            background: #fa3e3e;
+        }
+
+        .profile-header {
+            background: #4267B2;
+            border-radius: 8px;
+            padding: 25px 16px 20px;
+            margin-bottom: 16px;
+            text-align: center;
+            border: 1px solid #dddfe2;
+            position: relative;
+            color: white;
+        }
+
+        .profile-avatar-large {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4267B2;
+            font-weight: bold;
+            font-size: 2.2rem;
+            margin: 0 auto 12px;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .profile-name {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .profile-email {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .profile-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 16px;
+        }
+
+        .profile-stat {
+            text-align: center;
+        }
+
+        .profile-stat .number {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .profile-stat .label {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .form-group {
@@ -332,9 +555,10 @@
 
         .form-group label {
             display: block;
-            margin-bottom: 5px;
-            color: #000000;
+            margin-bottom: 4px;
+            color: #1c1e21;
             font-weight: 600;
+            font-size: 0.9rem;
         }
 
         .form-group input,
@@ -342,10 +566,12 @@
         .form-group select,
         .form-group input[type="file"] {
             width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #cccccc;
-            border-radius: 12px;
-            font-family: 'Times New Roman', Times, serif;
+            padding: 10px 12px;
+            border: 1px solid #ccd0d5;
+            border-radius: 6px;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 0.95rem;
+            background: white;
         }
 
         .form-group input:focus,
@@ -353,68 +579,58 @@
         .form-group select:focus,
         .form-group input[type="file"]:focus {
             outline: none;
-            border-color: #0066cc;
+            border-color: #4267B2;
+            box-shadow: 0 0 0 2px rgba(66,103,178,0.2);
         }
 
         .image-preview-container {
-            margin-top: 10px;
-            border-radius: 12px;
+            margin-top: 8px;
+            border-radius: 6px;
             overflow: hidden;
-            border: 2px dashed #0066cc;
+            border: 1px dashed #4267B2;
             position: relative;
-            min-height: 150px;
+            min-height: 120px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #f5f5f5;
+            background: #f0f2f5;
         }
 
         .image-preview {
             max-width: 100%;
-            max-height: 200px;
+            max-height: 180px;
             object-fit: contain;
-        }
-
-        .preview-placeholder {
-            color: #999;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .preview-placeholder i {
-            font-size: 3rem;
-            color: #0066cc;
-            margin-bottom: 10px;
         }
 
         .remove-image {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #dc3545;
+            top: 8px;
+            right: 8px;
+            background: #fa3e3e;
             color: white;
             border: none;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 28px;
+            height: 28px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.2rem;
+            font-weight: bold;
         }
 
         .options-container {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 10px;
+            background: #f0f2f5;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
         }
 
         .option-row {
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 8px;
+            margin-bottom: 8px;
         }
 
         .option-row input {
@@ -424,21 +640,23 @@
         .remove-option {
             background: none;
             border: none;
-            color: #dc3545;
-            font-size: 1.3rem;
+            color: #fa3e3e;
+            font-size: 1.4rem;
             cursor: pointer;
+            line-height: 1;
         }
 
         .add-option-btn {
             background: none;
-            border: 2px dashed #0066cc;
-            color: #0066cc;
-            padding: 10px;
-            border-radius: 12px;
+            border: 1px dashed #4267B2;
+            color: #4267B2;
+            padding: 8px;
+            border-radius: 6px;
             width: 100%;
             cursor: pointer;
-            margin-top: 5px;
-            font-family: 'Times New Roman', Times, serif;
+            margin-top: 4px;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-weight: 500;
         }
 
         .modal {
@@ -447,37 +665,45 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.6);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            padding: 20px;
+            padding: 16px;
         }
 
         .modal-content {
             background: white;
-            border-radius: 24px;
+            border-radius: 12px;
             max-width: 450px;
             width: 100%;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
-            border: 3px solid #0066cc;
+            border: 1px solid #dddfe2;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .modal-header {
-            padding: 20px;
-            border-bottom: 2px solid #000000;
-            background: #000000;
-            color: white;
-            border-radius: 20px 20px 0 0;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e9ebee;
+            background: #f0f2f5;
+            color: #1c1e21;
+            border-radius: 12px 12px 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
+        .modal-header h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
         .modal-header i {
             cursor: pointer;
+            color: #8d949e;
+            font-size: 1.3rem;
         }
 
         .modal-body {
@@ -485,75 +711,169 @@
         }
 
         .modal-footer {
-            padding: 20px;
-            border-top: 2px solid #000000;
+            padding: 16px 20px;
+            border-top: 1px solid #e9ebee;
             display: flex;
             gap: 10px;
         }
 
         .poll-option {
-            background: #f5f5f5;
-            border: 2px solid #cccccc;
-            border-radius: 12px;
-            padding: 12px 15px;
-            margin-bottom: 10px;
+            background: #f0f2f5;
+            border: 1px solid #ccd0d5;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .poll-option.selected {
-            border-color: #0066cc;
-            background: rgba(0, 102, 204, 0.1);
+            border-color: #4267B2;
+            background: #e7f3ff;
         }
 
         .poll-option input[type="radio"] {
-            accent-color: #0066cc;
+            accent-color: #4267B2;
         }
 
         .vote-count {
-            background: #000000;
-            color: white;
-            padding: 3px 10px;
+            background: #e9ebee;
+            color: #4b4f56;
+            padding: 2px 8px;
+            border-radius: 16px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        /* Comments Section */
+        .comments-section {
+            margin-top: 20px;
+            border-top: 1px solid #dddfe2;
+            padding-top: 16px;
+        }
+
+        .comments-title {
+            font-size: 1rem;
+            color: #1c1e21;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .comment-item {
+            background: #f0f2f5;
+            border-radius: 18px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            border: 1px solid #dddfe2;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            color: #385898;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .comment-time {
+            font-size: 0.65rem;
+            color: #90949c;
+        }
+
+        .comment-text {
+            color: #1c1e21;
+            font-size: 0.85rem;
+        }
+
+        .add-comment {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .comment-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ccd0d5;
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 0.9rem;
+        }
+
+        .comment-input:focus {
+            outline: none;
+            border-color: #4267B2;
+        }
+
+        .comment-btn {
+            background: #4267B2;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .comment-btn:hover {
+            background: #365899;
         }
 
         .chart-container {
             margin: 20px 0;
-            height: 200px;
+            height: 180px;
+        }
+
+        .mini-chart {
+            height: 80px;
+            margin: 8px 0;
         }
 
         .auth-container {
             max-width: 400px;
             margin: 20px auto;
             padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dddfe2;
         }
 
         .auth-tabs {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             margin-bottom: 20px;
-            background: #000000;
-            padding: 5px;
-            border-radius: 50px;
-            border: 2px solid #0066cc;
+            background: #e9ebee;
+            padding: 4px;
+            border-radius: 30px;
         }
 
         .auth-tab {
             flex: 1;
-            padding: 12px;
+            padding: 10px;
             border: none;
-            border-radius: 50px;
+            border-radius: 30px;
             cursor: pointer;
             background: transparent;
-            color: white;
-            font-family: 'Times New Roman', Times, serif;
+            color: #4b4f56;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-weight: 600;
+            transition: all 0.2s;
         }
 
         .auth-tab.active {
-            background: #0066cc;
+            background: #4267B2;
+            color: white;
         }
 
         .auth-form {
@@ -564,75 +884,25 @@
             display: block;
         }
 
-        .profile-header {
-            background: #000000;
-            border-radius: 20px;
-            padding: 30px 20px;
-            margin-bottom: 20px;
-            text-align: center;
-            border: 2px solid #0066cc;
-        }
-
-        .profile-avatar-large {
-            width: 90px;
-            height: 90px;
-            background: #0066cc;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 2.2rem;
-            margin: 0 auto 15px;
-            border: 3px solid white;
-        }
-
-        .profile-name {
-            color: white;
-            font-size: 1.6rem;
-            margin-bottom: 5px;
-        }
-
-        .profile-email {
-            color: #0066cc;
-            margin-bottom: 15px;
-        }
-
-        .profile-stats {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-        }
-
-        .profile-stat .number {
-            font-size: 1.4rem;
-            font-weight: bold;
-            color: #0066cc;
-        }
-
-        .profile-stat .label {
-            color: white;
-        }
-
         .alert {
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 15px 25px;
-            border-radius: 50px;
+            padding: 12px 20px;
+            border-radius: 30px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             z-index: 2000;
-            background: #000000;
-            color: white;
-            border: 2px solid #0066cc;
-            animation: slideIn 0.3s ease;
+            background: white;
+            color: #1c1e21;
+            border: 1px solid #4267B2;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            animation: slideIn 0.2s ease;
         }
 
         .alert i {
-            color: #0066cc;
+            color: #4267B2;
         }
 
         @keyframes slideIn {
@@ -644,45 +914,98 @@
             text-align: center;
             padding: 40px 20px;
             background: white;
-            border-radius: 16px;
-            border: 2px solid #000000;
+            border-radius: 8px;
+            border: 1px solid #dddfe2;
         }
 
         .empty-state i {
-            font-size: 4rem;
-            color: #0066cc;
-            margin-bottom: 15px;
+            font-size: 3rem;
+            color: #8d949e;
+            margin-bottom: 12px;
         }
 
-        /* New Security Features CSS */
         .rate-limit-warning {
             background: #ffc107;
-            color: #000;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            color: #1c1e21;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 12px;
             text-align: center;
+            font-weight: 500;
         }
 
         .session-info {
-            font-size: 0.8rem;
-            color: #999;
-            margin-top: 5px;
-        }
-
-        .delete-account {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #333;
+            font-size: 0.75rem;
+            color: #90949c;
+            margin-top: 4px;
         }
 
         .poll-image {
             width: 100%;
             max-height: 200px;
             object-fit: cover;
-            border-radius: 12px;
-            margin: 10px 0;
-            border: 2px solid #0066cc;
+            border-radius: 6px;
+            margin: 8px 0;
+            border: 1px solid #dddfe2;
+        }
+
+        .country-selector {
+            margin-bottom: 15px;
+        }
+
+        .country-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccd0d5;
+            border-radius: 6px;
+            background: white;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+        }
+
+        .poll-stats-card {
+            background: #f0f2f5;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 10px;
+            border: 1px solid #dddfe2;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .stats-label {
+            font-weight: 600;
+            color: #4b4f56;
+        }
+
+        .stats-value {
+            color: #1c1e21;
+            font-weight: 600;
+        }
+
+        .delete-post-btn {
+            background: #fa3e3e;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 8px;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            transition: background 0.2s;
+        }
+
+        .delete-post-btn:hover {
+            background: #e03535;
         }
     </style>
 </head>
@@ -709,55 +1032,37 @@
                 <i class="fas fa-exclamation-triangle"></i> Too many attempts. Please wait <span id="waitTime">60</span> seconds.
             </div>
 
-            <!-- Home Section -->
+            <!-- Home Section - Simplified -->
             <div id="homeSection" class="section">
-                <div class="features-grid">
-                    <div class="feature-card" onclick="showSection('pollsSection')">
-                        <i class="fas fa-poll"></i>
-                        <h3>Polls</h3>
-                    </div>
-                    <div class="feature-card" onclick="showSection('createSection')">
-                        <i class="fas fa-plus-circle"></i>
-                        <h3>Create</h3>
-                    </div>
-                    <div class="feature-card" onclick="showSection('profileSection')">
-                        <i class="fas fa-user"></i>
-                        <h3>Profile</h3>
-                    </div>
-                    <div class="feature-card" onclick="showSection('authSection')">
-                        <i class="fas fa-sign-in-alt"></i>
-                        <h3>Join</h3>
+                <!-- Search Bar -->
+                <div class="search-container">
+                    <div class="search-box">
+                        <span class="search-icon"><i class="fas fa-search"></i></span>
+                        <input type="text" class="search-input" id="searchInput" placeholder="Search by username..." oninput="handleSearchInput(this.value)">
+                        <span class="clear-search" id="clearSearch" onclick="clearSearch()"><i class="fas fa-times"></i></span>
                     </div>
                 </div>
 
-                <div class="quick-stats">
-                    <div class="quick-stat">
-                        <div class="number" id="statPolls">0</div>
-                        <div class="label">Polls</div>
-                    </div>
-                    <div class="quick-stat">
-                        <div class="number" id="statUsers">0</div>
-                        <div class="label">Users</div>
-                    </div>
-                    <div class="quick-stat">
-                        <div class="number" id="statVotes">0</div>
-                        <div class="label">Votes</div>
-                    </div>
+                <!-- Feed Header -->
+                <div class="feed-header">
+                    <h3 class="feed-title" id="feedTitle">Recent Polls</h3>
+                    <div id="searchResultsBadge" class="search-results-badge" style="display: none;">Search Results</div>
                 </div>
 
-                <div id="recentPolls"></div>
+                <!-- Feed Container -->
+                <div id="feedContainer"></div>
             </div>
 
             <!-- Polls Section -->
             <div id="pollsSection" class="section">
-                <h3 style="margin-bottom: 15px;">All Polls</h3>
+                <h3 style="margin-bottom: 12px; color:#1c1e21;">All Polls</h3>
                 <div id="pollsList"></div>
             </div>
 
-            <!-- Create Section - UPDATED with Image Upload -->
+            <!-- Create Section -->
             <div id="createSection" class="section">
-                <div style="background: white; border-radius: 16px; padding: 20px; border: 2px solid #000000;">
-                    <h3 style="margin-bottom: 20px;">Create New Poll</h3>
+                <div style="background: white; border-radius: 8px; padding: 16px; border: 1px solid #dddfe2;">
+                    <h3 style="margin-bottom: 16px; color:#1c1e21;">Create New Poll</h3>
                     <form id="createPollForm">
                         <div class="form-group">
                             <label>Question</label>
@@ -771,7 +1076,7 @@
                             <small class="session-info" id="descCount">0/500</small>
                         </div>
                         
-                        <!-- NEW: Image Upload Field -->
+                        <!-- Image Upload Field -->
                         <div class="form-group">
                             <label><i class="fas fa-image"></i> Poll Image (Optional)</label>
                             <input type="file" id="pollImage" accept="image/*" onchange="previewImage(this)">
@@ -794,10 +1099,21 @@
                         <div class="form-group">
                             <label>Category</label>
                             <select id="pollCategory">
-                                <option value="general">General</option>
-                                <option value="technology">Technology</option>
-                                <option value="entertainment">Entertainment</option>
-                                <option value="philosophy">Philosophy</option>
+                                <option value="All">All</option>
+                                <option value="Trending">Trending</option>
+                                <option value="News">News</option>
+                                <option value="Sports">Sports</option>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Technology">Technology</option>
+                                <option value="Politics">Politics</option>
+                                <option value="Science">Science</option>
+                                <option value="Health">Health</option>
+                                <option value="Gaming">Gaming</option>
+                                <option value="Music">Music</option>
+                                <option value="Education">Education</option>
+                                <option value="Fashion">Fashion</option>
+                                <option value="Business">Business</option>
+                                <option value="Travel">Travel</option>
                             </select>
                         </div>
                         
@@ -808,35 +1124,40 @@
                 </div>
             </div>
 
-            <!-- Profile Section -->
+            <!-- Profile Section (Logged-in User) -->
             <div id="profileSection" class="section">
                 <div class="profile-header">
+                    <!-- Quick Access Actions -->
+                    <div class="profile-actions">
+                        <button class="profile-action-btn" onclick="logout()" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                        <button class="profile-action-btn danger" onclick="confirmDeleteAccount()" title="Delete Account">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+
                     <div class="profile-avatar-large" id="profileAvatar"></div>
                     <h2 class="profile-name" id="profileName">Loading...</h2>
                     <div class="profile-email" id="profileEmail"></div>
                     <div class="session-info" id="memberSince"></div>
+                    
+                    <!-- Stats: only Polls and Impact (total votes received) -->
                     <div class="profile-stats">
                         <div class="profile-stat">
                             <div class="number" id="profilePolls">0</div>
                             <div class="label">Polls</div>
                         </div>
                         <div class="profile-stat">
-                            <div class="number" id="profileVotes">0</div>
-                            <div class="label">Votes</div>
+                            <div class="number" id="profileImpact">0</div>
+                            <div class="label">Impact</div>
                         </div>
                     </div>
                 </div>
+
+                <!-- User Polls Section -->
+                <h3 style="margin-bottom: 12px; color: #1c1e21;">Your Polls</h3>
                 <div id="userPolls"></div>
-                <button class="btn btn-secondary" style="margin-top: 15px;" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </button>
-                
-                <!-- Delete Account Section (only shown when logged in) -->
-                <div class="delete-account" id="deleteAccountSection" style="display: none;">
-                    <button class="btn btn-danger" onclick="confirmDeleteAccount()">
-                        <i class="fas fa-trash"></i> Delete Account
-                    </button>
-                </div>
             </div>
 
             <!-- Auth Section -->
@@ -881,6 +1202,40 @@
                                 <label>Confirm Password</label>
                                 <input type="password" id="signupConfirmPassword" required>
                             </div>
+                            
+                            <!-- Country Selection -->
+                            <div class="form-group country-selector">
+                                <label><i class="fas fa-globe"></i> Country</label>
+                                <select id="signupCountry" required>
+                                    <option value="">Select your country</option>
+                                    <option value="United States">United States</option>
+                                    <option value="United Kingdom">United Kingdom</option>
+                                    <option value="Canada">Canada</option>
+                                    <option value="Australia">Australia</option>
+                                    <option value="India">India</option>
+                                    <option value="Germany">Germany</option>
+                                    <option value="France">France</option>
+                                    <option value="Japan">Japan</option>
+                                    <option value="Brazil">Brazil</option>
+                                    <option value="Mexico">Mexico</option>
+                                    <option value="South Africa">South Africa</option>
+                                    <option value="Nigeria">Nigeria</option>
+                                    <option value="Kenya">Kenya</option>
+                                    <option value="Egypt">Egypt</option>
+                                    <option value="UAE">UAE</option>
+                                    <option value="Saudi Arabia">Saudi Arabia</option>
+                                    <option value="Singapore">Singapore</option>
+                                    <option value="Malaysia">Malaysia</option>
+                                    <option value="Indonesia">Indonesia</option>
+                                    <option value="Philippines">Philippines</option>
+                                    <option value="Pakistan">Pakistan</option>
+                                    <option value="Bangladesh">Bangladesh</option>
+                                    <option value="Sri Lanka">Sri Lanka</option>
+                                    <option value="Nepal">Nepal</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            
                             <button type="submit" class="btn btn-primary" id="signupBtn">Sign Up</button>
                         </form>
                     </div>
@@ -931,17 +1286,26 @@
         const auth = firebase.auth();
 
         // ===== SUPABASE CONFIGURATION =====
-        // Replace these with your actual Supabase credentials
-        const SUPABASE_URL = 'https://pzwhqznvqmjvgugbnzgy.supabase.co'; // Replace with your Supabase URL
-        const SUPABASE_KEY = 'sb_publishable_TdywFipJUq-1Fen6X4cVeA_xTFgwToG'; // Replace with your Supabase anon key
-        const BUCKET_NAME = 'media'; // Replace with your bucket name
+        const SUPABASE_URL = 'https://pzwhqznvqmjvgugbnzgy.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_TdywFipJUq-1Fen6X4cVeA_xTFgwToG';
+        const BUCKET_NAME = 'media';
         
-        // Initialize Supabase client with different name to avoid conflict with global supabase object
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // ===== GLOBAL FUNCTIONS (defined outside DOMContentLoaded for global access) =====
+        // ===== HELPER: Destroy existing Chart.js instance on a canvas =====
+        function destroyChart(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (canvas) {
+                const chart = Chart.getChart(canvas);
+                if (chart) {
+                    chart.destroy();
+                }
+            }
+        }
+
+        // ===== GLOBAL FUNCTIONS =====
         
-        // Preview image function - called from onchange event
+        // Preview image function
         function previewImage(input) {
             const previewContainer = document.getElementById('imagePreviewContainer');
             const preview = document.getElementById('imagePreview');
@@ -949,7 +1313,6 @@
             if (input.files && input.files[0]) {
                 const file = input.files[0];
                 
-                // Validate file size (max 5MB)
                 if (file.size > 5 * 1024 * 1024) {
                     showAlert('Image size must be less than 5MB');
                     input.value = '';
@@ -957,7 +1320,6 @@
                     return;
                 }
                 
-                // Validate file type
                 if (!file.type.startsWith('image/')) {
                     showAlert('Please upload an image file');
                     input.value = '';
@@ -979,7 +1341,6 @@
             }
         }
 
-        // Remove selected image - called from onclick event
         function removeSelectedImage() {
             const imageInput = document.getElementById('pollImage');
             const previewContainer = document.getElementById('imagePreviewContainer');
@@ -993,18 +1354,15 @@
             previewContainer.style.display = 'none';
         }
 
-        // Upload image to Supabase using supabaseClient
         async function uploadImageToSupabase(file) {
             if (!file) return null;
             
-            // Create a unique filename
             const timestamp = Date.now();
             const randomString = Math.random().toString(36).substring(2, 15);
             const fileExt = file.name.split('.').pop();
             const fileName = `poll-${timestamp}-${randomString}.${fileExt}`;
             
             try {
-                // Upload to Supabase Storage - using supabaseClient instead of supabase
                 const { data, error } = await supabaseClient.storage
                     .from(BUCKET_NAME)
                     .upload(fileName, file, {
@@ -1017,7 +1375,6 @@
                     throw new Error('Failed to upload image: ' + error.message);
                 }
                 
-                // Get public URL
                 const { data: urlData } = supabaseClient.storage
                     .from(BUCKET_NAME)
                     .getPublicUrl(fileName);
@@ -1031,7 +1388,6 @@
 
         // ===== SECURITY ENHANCEMENTS =====
 
-        // 1. Rate Limiting
         const rateLimits = {
             login: { count: 0, lastAttempt: 0, blockedUntil: 0 },
             signup: { count: 0, lastAttempt: 0, blockedUntil: 0 },
@@ -1041,27 +1397,24 @@
 
         const RATE_LIMIT = {
             MAX_ATTEMPTS: 5,
-            TIME_WINDOW: 60000, // 1 minute
-            BLOCK_DURATION: 300000 // 5 minutes
+            TIME_WINDOW: 60000,
+            BLOCK_DURATION: 300000
         };
 
         function checkRateLimit(action) {
             const now = Date.now();
             const limit = rateLimits[action];
             
-            // Check if currently blocked
             if (limit.blockedUntil > now) {
                 const waitSeconds = Math.ceil((limit.blockedUntil - now) / 1000);
                 showRateLimitWarning(waitSeconds);
                 return false;
             }
             
-            // Reset counter if outside time window
             if (now - limit.lastAttempt > RATE_LIMIT.TIME_WINDOW) {
                 limit.count = 0;
             }
             
-            // Check if over limit
             if (limit.count >= RATE_LIMIT.MAX_ATTEMPTS) {
                 limit.blockedUntil = now + RATE_LIMIT.BLOCK_DURATION;
                 showRateLimitWarning(Math.ceil(RATE_LIMIT.BLOCK_DURATION / 1000));
@@ -1089,7 +1442,6 @@
             }, 1000);
         }
 
-        // 2. Input Sanitization
         function sanitizeInput(input) {
             if (!input) return '';
             return input
@@ -1100,23 +1452,19 @@
                 .trim();
         }
 
-        // 3. CSRF Protection
         function generateCSRFToken() {
             return Math.random().toString(36).substring(2) + Date.now().toString(36);
         }
 
         let csrfToken = generateCSRFToken();
 
-        // 4. Validate Poll Options
         function validatePollOptions(options) {
             if (options.length < 2 || options.length > 10) return false;
             
-            // Check for duplicate options
             const texts = options.map(o => o.text.toLowerCase().trim());
             const unique = new Set(texts);
             if (unique.size !== options.length) return false;
             
-            // Check option length
             for (let opt of options) {
                 if (opt.text.length < 1 || opt.text.length > 100) return false;
             }
@@ -1124,9 +1472,8 @@
             return true;
         }
 
-        // 5. Session Management
         let sessionTimeout;
-        const SESSION_DURATION = 3600000; // 1 hour
+        const SESSION_DURATION = 3600000;
 
         function resetSessionTimeout() {
             if (sessionTimeout) clearTimeout(sessionTimeout);
@@ -1143,6 +1490,327 @@
         let allPolls = [];
         let allUsers = [];
         let optionCount = 2;
+        let currentSearchTerm = '';
+
+        // ===== SEARCH FUNCTIONS =====
+        function handleSearchInput(value) {
+            const searchTerm = value.toLowerCase().trim();
+            const clearBtn = document.getElementById('clearSearch');
+            const searchBadge = document.getElementById('searchResultsBadge');
+            
+            currentSearchTerm = searchTerm;
+            
+            if (searchTerm.length > 0) {
+                clearBtn.classList.add('active');
+                searchUserPosts(searchTerm);
+                searchBadge.style.display = 'inline-block';
+            } else {
+                clearBtn.classList.remove('active');
+                searchBadge.style.display = 'none';
+                loadRandomizedFeed();
+            }
+        }
+
+        function clearSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = '';
+            handleSearchInput('');
+        }
+
+        function searchUserPosts(searchTerm) {
+            const feedContainer = document.getElementById('feedContainer');
+            
+            if (!searchTerm) {
+                loadRandomizedFeed();
+                return;
+            }
+            
+            const filteredPolls = allPolls.filter(poll => 
+                poll.creatorName && poll.creatorName.toLowerCase().includes(searchTerm)
+            );
+            
+            if (filteredPolls.length === 0) {
+                feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No polls found for "' + escapeHtml(searchTerm) + '"</p></div>';
+                return;
+            }
+            
+            feedContainer.innerHTML = '';
+            filteredPolls.forEach(poll => {
+                feedContainer.appendChild(createPollCard(poll));
+            });
+        }
+
+        // ===== COMMENT FUNCTIONS =====
+        async function loadComments(pollId, commentsContainer) {
+            try {
+                const snapshot = await db.collection('polls').doc(pollId)
+                    .collection('comments')
+                    .orderBy('createdAt', 'desc')
+                    .limit(50)
+                    .get();
+                
+                commentsContainer.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    commentsContainer.innerHTML = '<p style="text-align: center; color: #999;">No comments yet. Be the first to comment!</p>';
+                    return;
+                }
+                
+                snapshot.forEach(doc => {
+                    const comment = doc.data();
+                    const commentDiv = document.createElement('div');
+                    commentDiv.className = 'comment-item';
+                    commentDiv.innerHTML = `
+                        <div class="comment-header">
+                            <span class="comment-author" onclick="viewUserProfile('${comment.userId}')">${escapeHtml(comment.userName)}</span>
+                            <span class="comment-time">${getTimeAgo(comment.createdAt?.toDate())}</span>
+                        </div>
+                        <div class="comment-text">${escapeHtml(comment.text)}</div>
+                    `;
+                    commentsContainer.appendChild(commentDiv);
+                });
+            } catch (error) {
+                console.error('Error loading comments:', error);
+                showAlert('Failed to load comments');
+            }
+        }
+
+        async function addComment(pollId, text) {
+            if (!currentUser) {
+                showAlert('Please login to comment');
+                return false;
+            }
+            
+            if (!text.trim()) {
+                showAlert('Comment cannot be empty');
+                return false;
+            }
+            
+            try {
+                await db.collection('polls').doc(pollId)
+                    .collection('comments')
+                    .add({
+                        userId: currentUser.uid,
+                        userName: currentUser.name,
+                        text: sanitizeInput(text),
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                
+                // Update comment count in poll document using atomic increment
+                const pollRef = db.collection('polls').doc(pollId);
+                await pollRef.update({
+                    commentCount: firebase.firestore.FieldValue.increment(1)
+                });
+                
+                showAlert('Comment added!');
+                return true;
+            } catch (error) {
+                console.error('Error adding comment:', error);
+                showAlert('Failed to add comment');
+                return false;
+            }
+        }
+
+        // ===== FOLLOW FUNCTIONS (REMOVED) =====
+
+        // ===== GET USER STATS (only polls and impact) =====
+        async function getUserImpact(userId) {
+            try {
+                // Get user's polls and sum all votes
+                const pollsSnapshot = await db.collection('polls')
+                    .where('createdBy', '==', userId)
+                    .get();
+                
+                let totalVotes = 0;
+                pollsSnapshot.forEach(doc => {
+                    const poll = doc.data();
+                    if (poll.options) {
+                        poll.options.forEach(opt => {
+                            totalVotes += opt.votes || 0;
+                        });
+                    }
+                });
+                
+                return {
+                    polls: pollsSnapshot.size,
+                    impact: totalVotes
+                };
+            } catch (error) {
+                console.error('Error getting user impact:', error);
+                return { polls: 0, impact: 0 };
+            }
+        }
+
+        // ===== VIEW USER PROFILE (without follow) =====
+        async function viewUserProfile(userId) {
+            if (!userId) return;
+            
+            // If it's the current user, just show the profile section
+            if (currentUser && userId === currentUser.uid) {
+                showSection('profileSection');
+                return;
+            }
+            
+            try {
+                // Get user data
+                const userDoc = await db.collection('users').doc(userId).get();
+                if (!userDoc.exists) {
+                    showAlert('User not found');
+                    return;
+                }
+                
+                const userData = userDoc.data();
+                const impactData = await getUserImpact(userId);
+                
+                // Get user's polls
+                const pollsSnapshot = await db.collection('polls')
+                    .where('createdBy', '==', userId)
+                    .orderBy('createdAt', 'desc')
+                    .limit(20)
+                    .get();
+                
+                const userPolls = pollsSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    commentCount: doc.data().commentCount || 0,
+                    createdAt: doc.data().createdAt?.toDate() || new Date()
+                }));
+                
+                // Create modal
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>User Profile</h3>
+                            <i class="fas fa-times" style="font-size: 1.5rem; cursor: pointer;" onclick="this.closest('.modal').remove()"></i>
+                        </div>
+                        <div class="modal-body">
+                            <div class="profile-header" style="margin-bottom: 20px;">
+                                <div class="profile-avatar-large">${escapeHtml(userData.name?.[0] || 'U')}</div>
+                                <h2 class="profile-name">${escapeHtml(userData.name || 'Anonymous')}</h2>
+                                <div class="profile-email">${escapeHtml(userData.email || '')}</div>
+                                
+                                <div class="profile-stats" style="margin-top: 20px;">
+                                    <div class="profile-stat">
+                                        <div class="number">${impactData.polls}</div>
+                                        <div class="label">Polls</div>
+                                    </div>
+                                    <div class="profile-stat">
+                                        <div class="number">${impactData.impact}</div>
+                                        <div class="label">Impact</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h4 style="margin-bottom: 15px; color: #000000;">Recent Polls</h4>
+                            <div id="userProfilePolls"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Load user's polls
+                const pollsContainer = document.getElementById('userProfilePolls');
+                if (userPolls.length > 0) {
+                    pollsContainer.innerHTML = '';
+                    userPolls.forEach(poll => {
+                        pollsContainer.appendChild(createProfilePollCard(poll, true));
+                    });
+                } else {
+                    pollsContainer.innerHTML = '<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet</p></div>';
+                }
+                
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+                showAlert('Failed to load user profile');
+            }
+        }
+
+        // ===== DELETE POLL FUNCTIONS =====
+        async function deleteOwnPoll(pollId) {
+            if (!currentUser) {
+                showAlert('Please login first');
+                return false;
+            }
+            
+            try {
+                const pollRef = db.collection('polls').doc(pollId);
+                const pollDoc = await pollRef.get();
+                
+                if (!pollDoc.exists) {
+                    showAlert('Poll not found');
+                    return false;
+                }
+                
+                const poll = pollDoc.data();
+                
+                // Security check: verify user owns this poll
+                if (poll.createdBy !== currentUser.uid) {
+                    showAlert('You can only delete your own polls');
+                    return false;
+                }
+                
+                // Confirm deletion
+                if (!confirm('Are you sure you want to delete this poll? This action cannot be undone.')) {
+                    return false;
+                }
+                
+                // Delete all comments subcollection
+                const comments = await pollRef.collection('comments').get();
+                const batch = db.batch();
+                
+                comments.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                // Delete the poll document
+                batch.delete(pollRef);
+                
+                await batch.commit();
+                
+                // Decrement user's poll count
+                await db.collection('users').doc(currentUser.uid).update({
+                    polls: firebase.firestore.FieldValue.increment(-1)
+                });
+                
+                // Update local data
+                if (currentUser) {
+                    currentUser.polls = (currentUser.polls || 0) - 1;
+                }
+                
+                // Update UI
+                const profilePollsElement = document.getElementById('profilePolls');
+                if (profilePollsElement) {
+                    profilePollsElement.innerHTML = currentUser ? currentUser.polls : 0;
+                }
+                
+                // Remove from allPolls array
+                allPolls = allPolls.filter(p => p.id !== pollId);
+                
+                showAlert('Poll deleted successfully');
+                
+                // Refresh the current view
+                if (document.getElementById('profileSection').classList.contains('active-section')) {
+                    loadUserProfile();
+                } else {
+                    loadRandomizedFeed();
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Error deleting poll:', error);
+                showAlert('Failed to delete poll: ' + error.message);
+                return false;
+            }
+        }
 
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', () => {
@@ -1158,33 +1826,36 @@
             // Check auth state
             auth.onAuthStateChanged(async (user) => {
                 if (user) {
-                    // Reset session timeout
                     resetSessionTimeout();
                     
-                    // Get user data from Firestore
                     const userDoc = await db.collection('users').doc(user.uid).get();
                     
                     if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        const impactData = await getUserImpact(user.uid);
+                        
                         currentUser = {
                             uid: user.uid,
                             email: user.email,
-                            name: userDoc.data().name,
-                            polls: userDoc.data().polls || 0,
-                            votes: userDoc.data().votes || 0,
-                            createdAt: userDoc.data().createdAt
+                            name: userData.name,
+                            country: userData.country || 'Not set',
+                            polls: impactData.polls,
+                            votes: userData.votes || 0,
+                            createdAt: userData.createdAt
                         };
                     } else {
-                        // Create user document if it doesn't exist
                         currentUser = {
                             uid: user.uid,
                             email: user.email,
                             name: user.email.split('@')[0],
+                            country: 'Global',
                             polls: 0,
                             votes: 0
                         };
                         await db.collection('users').doc(user.uid).set({
                             name: currentUser.name,
                             email: currentUser.email,
+                            country: 'Global',
                             polls: 0,
                             votes: 0,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1199,13 +1870,12 @@
                     document.getElementById('profileAvatar').innerHTML = currentUser.name.charAt(0).toUpperCase();
                     document.getElementById('profileName').innerHTML = currentUser.name;
                     document.getElementById('profileEmail').innerHTML = currentUser.email;
-                    document.getElementById('profilePolls').innerHTML = currentUser.polls;
-                    document.getElementById('profileVotes').innerHTML = currentUser.votes;
                     
-                    // Show delete account section
-                    document.getElementById('deleteAccountSection').style.display = 'block';
+                    // Load impact for profile
+                    const impactData = await getUserImpact(currentUser.uid);
+                    document.getElementById('profilePolls').innerHTML = impactData.polls;
+                    document.getElementById('profileImpact').innerHTML = impactData.impact;
                     
-                    // Show member since
                     if (currentUser.createdAt) {
                         const date = currentUser.createdAt.toDate();
                         document.getElementById('memberSince').innerHTML = `Member since: ${date.toLocaleDateString()}`;
@@ -1216,14 +1886,19 @@
                     currentUser = null;
                     document.getElementById('userBadge').innerHTML = 'Join';
                     document.getElementById('userBadge').onclick = () => showSection('authSection');
-                    document.getElementById('deleteAccountSection').style.display = 'none';
+                    
+                    // Reset profile stats to 0 when logged out
+                    document.getElementById('profilePolls').innerHTML = '0';
+                    document.getElementById('profileImpact').innerHTML = '0';
                 }
                 
                 await loadPolls();
                 await loadUsers();
-                updateStats();
                 document.getElementById('loadingState').style.display = 'none';
                 showSection('homeSection');
+                
+                // Load randomized feed
+                loadRandomizedFeed();
             });
 
             // Initialize options
@@ -1237,21 +1912,54 @@
             try {
                 const snapshot = await db.collection('polls')
                     .orderBy('createdAt', 'desc')
-                    .limit(50) // Limit results to prevent overload
+                    .limit(50)
                     .get();
                     
-                allPolls = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    createdAt: doc.data().createdAt?.toDate() || new Date()
-                }));
+                allPolls = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        commentCount: data.commentCount || 0,
+                        createdAt: data.createdAt?.toDate() || new Date()
+                    };
+                });
                 
                 displayPolls();
-                displayRecentPolls();
+                // Update based on current view
+                if (document.getElementById('homeSection').classList.contains('active-section')) {
+                    if (currentSearchTerm) {
+                        searchUserPosts(currentSearchTerm);
+                    } else {
+                        loadRandomizedFeed();
+                    }
+                }
             } catch (error) {
                 console.error("Error loading polls:", error);
                 showAlert('Error loading polls');
             }
+        }
+
+        // ===== RANDOMIZED FEED FUNCTION =====
+        function loadRandomizedFeed() {
+            const feedContainer = document.getElementById('feedContainer');
+            
+            if (allPolls.length === 0) {
+                feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet</p><button class="btn btn-primary" style="margin-top: 15px;" onclick="showSection(\'createSection\')">Create the First Poll</button></div>';
+                return;
+            }
+            
+            // Create a copy and shuffle using randomWeight
+            const shuffledPolls = [...allPolls].sort((a, b) => {
+                const weightA = a.randomWeight || Math.random();
+                const weightB = b.randomWeight || Math.random();
+                return weightA - weightB;
+            });
+            
+            feedContainer.innerHTML = '';
+            shuffledPolls.forEach(poll => {
+                feedContainer.appendChild(createPollCard(poll));
+            });
         }
 
         async function loadUsers() {
@@ -1266,19 +1974,8 @@
             }
         }
 
-        function updateStats() {
-            document.getElementById('statPolls').textContent = allPolls.length;
-            document.getElementById('statUsers').textContent = allUsers.length;
-            
-            const totalVotes = allPolls.reduce((sum, poll) => 
-                sum + (poll.options?.reduce((s, opt) => s + (opt.votes || 0), 0) || 0), 0
-            );
-            document.getElementById('statVotes').textContent = totalVotes;
-        }
-
         // ===== NAVIGATION =====
         function showSection(sectionId) {
-            // Reset session timeout on user activity
             if (currentUser) resetSessionTimeout();
             
             document.querySelectorAll('.section').forEach(s => {
@@ -1290,7 +1987,6 @@
                 item.classList.remove('active');
             });
             
-            // Find and activate the corresponding nav item
             const navItems = document.querySelectorAll('.nav-item');
             if (sectionId === 'homeSection') navItems[0].classList.add('active');
             else if (sectionId === 'pollsSection') navItems[1].classList.add('active');
@@ -1306,29 +2002,232 @@
                 showAlert('Please login first');
                 showSection('authSection');
             }
+            
+            if (sectionId === 'homeSection') {
+                if (currentSearchTerm) {
+                    searchUserPosts(currentSearchTerm);
+                } else {
+                    loadRandomizedFeed();
+                }
+            }
         }
 
         // ===== PROFILE FUNCTIONS =====
-        function loadUserProfile() {
+        async function loadUserProfile() {
             if (!currentUser) return;
             
-            // Get user's polls
             const userPolls = allPolls.filter(p => p.createdBy === currentUser.uid);
             
-            // Update stats
-            document.getElementById('profilePolls').innerHTML = userPolls.length;
+            // Get updated impact
+            const impactData = await getUserImpact(currentUser.uid);
             
-            // Display user's polls
+            document.getElementById('profilePolls').innerHTML = impactData.polls;
+            document.getElementById('profileImpact').innerHTML = impactData.impact;
+            
+            // Update currentUser object
+            currentUser.polls = impactData.polls;
+            
             const container = document.getElementById('userPolls');
             container.innerHTML = '';
             
             if (userPolls.length > 0) {
                 userPolls.forEach(poll => {
-                    container.appendChild(createPollCard(poll));
+                    container.appendChild(createProfilePollCard(poll, false));
                 });
             } else {
                 container.innerHTML = '<div class="empty-state"><i class="fas fa-poll"></i><p>You haven\'t created any polls yet</p><button class="btn btn-primary" style="margin-top: 15px;" onclick="showSection(\'createSection\')">Create Your First Poll</button></div>';
             }
+        }
+
+        // ===== PROFILE POLL CARD WITH STATS =====
+        function createProfilePollCard(poll, isPublic = false) {
+            const div = document.createElement('div');
+            div.className = 'poll-card';
+            
+            const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
+            const timeAgo = getTimeAgo(poll.createdAt);
+            
+            const imageHtml = poll.imageUrl ? 
+                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image">` : '';
+            
+            const categoryTag = poll.category && poll.category !== 'All' ? 
+                `<span class="category-tag"><i class="fas fa-tag"></i> ${escapeHtml(poll.category)}</span>` : '';
+            
+            div.innerHTML = `
+                <div class="card-header">
+                    <div class="avatar" onclick="viewUserProfile('${poll.createdBy}')">${escapeHtml(poll.creatorName?.[0] || 'U')}</div>
+                    <div class="user-info">
+                        <h4>
+                            <span class="username-link" onclick="event.stopPropagation(); viewUserProfile('${poll.createdBy}')">${escapeHtml(poll.creatorName || 'Anonymous')}</span>
+                        </h4>
+                        <div class="time"><i class="far fa-clock"></i> ${escapeHtml(timeAgo)}</div>
+                    </div>
+                </div>
+                <div class="poll-title">${escapeHtml(poll.title)}</div>
+                ${imageHtml}
+                <div class="poll-meta">
+                    ${categoryTag}
+                    <span><i class="fas fa-vote-yea"></i> ${totalVotes} votes</span>
+                    <span><i class="fas fa-comment"></i> ${poll.commentCount || 0} comments</span>
+                    ${poll.country ? `<span><i class="fas fa-globe"></i> ${escapeHtml(poll.country)}</span>` : ''}
+                </div>
+                <div class="poll-stats-card">
+                    <div class="stats-row">
+                        <span class="stats-label">Total Votes:</span>
+                        <span class="stats-value">${totalVotes}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stats-label">Comments:</span>
+                        <span class="stats-value">${poll.commentCount || 0}</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="stats-label">Options:</span>
+                        <span class="stats-value">${poll.options?.length || 0}</span>
+                    </div>
+                    <div class="mini-chart">
+                        <canvas id="miniChart-${poll.id}"></canvas>
+                    </div>
+                    ${!isPublic ? `
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn btn-primary btn-small" style="flex: 1;" onclick="viewPollStats('${poll.id}')">
+                                <i class="fas fa-chart-bar"></i> Stats
+                            </button>
+                            <button class="btn btn-danger btn-small" style="flex: 1;" onclick="deleteOwnPoll('${poll.id}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    ` : `
+                        <button class="btn btn-primary btn-small" style="margin-top: 10px;" onclick="viewPollStats('${poll.id}')">
+                            <i class="fas fa-chart-bar"></i> View Stats
+                        </button>
+                    `}
+                </div>
+            `;
+            
+            // Initialize mini chart after element is added to DOM
+            setTimeout(() => {
+                const canvasId = `miniChart-${poll.id}`;
+                destroyChart(canvasId); // Destroy any existing chart on this canvas
+                const ctx = document.getElementById(canvasId)?.getContext('2d');
+                if (ctx && poll.options) {
+                    new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: poll.options.map(opt => escapeHtml(opt.text)),
+                            datasets: [{
+                                data: poll.options.map(opt => opt.votes || 0),
+                                backgroundColor: ['#4267B2', '#385898', '#2d4373', '#1e2e4f', '#0f1a2b']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+            }, 100);
+            
+            return div;
+        }
+
+        // ===== VIEW POLL STATS =====
+        function viewPollStats(pollId) {
+            const poll = allPolls.find(p => p.id === pollId);
+            if (!poll) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            
+            const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
+            
+            const imageHtml = poll.imageUrl ? 
+                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image" style="margin-bottom: 15px;">` : '';
+            
+            const categoryTag = poll.category && poll.category !== 'All' ? 
+                `<span class="category-tag" style="margin-bottom: 10px; display: inline-block;"><i class="fas fa-tag"></i> ${escapeHtml(poll.category)}</span>` : '';
+            
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>${escapeHtml(poll.title)} - Statistics</h3>
+                        <i class="fas fa-times" style="font-size: 1.5rem; cursor: pointer;" onclick="this.closest('.modal').remove()"></i>
+                    </div>
+                    <div class="modal-body">
+                        ${categoryTag}
+                        ${imageHtml}
+                        <p style="margin-bottom: 20px;">${escapeHtml(poll.description || '')}</p>
+                        
+                        <div class="poll-stats-card" style="margin-bottom: 20px;">
+                            <div class="stats-row">
+                                <span class="stats-label">Total Votes:</span>
+                                <span class="stats-value">${totalVotes}</span>
+                            </div>
+                            <div class="stats-row">
+                                <span class="stats-label">Comments:</span>
+                                <span class="stats-value">${poll.commentCount || 0}</span>
+                            </div>
+                            <div class="stats-row">
+                                <span class="stats-label">Created:</span>
+                                <span class="stats-value">${getTimeAgo(poll.createdAt)}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <canvas id="statsChart-${poll.id}"></canvas>
+                        </div>
+                        
+                        <div style="margin-top: 20px;">
+                            <h4>Option Breakdown:</h4>
+                            ${poll.options.map((opt, index) => `
+                                <div class="stats-row" style="margin-top: 10px;">
+                                    <span class="stats-label">${escapeHtml(opt.text)}:</span>
+                                    <span class="stats-value">${opt.votes || 0} votes (${totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0}%)</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            setTimeout(() => {
+                const canvasId = `statsChart-${poll.id}`;
+                // Destroy existing chart if any
+                if (Chart.getChart(canvasId)) {
+                    Chart.getChart(canvasId).destroy();
+                }
+                const ctx = document.getElementById(canvasId)?.getContext('2d');
+                if (ctx && poll.options) {
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: poll.options.map(opt => escapeHtml(opt.text)),
+                            datasets: [{
+                                label: 'Votes',
+                                data: poll.options.map(opt => opt.votes || 0),
+                                backgroundColor: '#4267B2'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { stepSize: 1 }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 100);
         }
 
         // ===== POLLS DISPLAY =====
@@ -1348,56 +2247,414 @@
             });
         }
 
-        function displayRecentPolls() {
-            const container = document.getElementById('recentPolls');
-            if (!container) return;
-            
-            container.innerHTML = '<h3 style="margin-bottom: 15px;">Recent Polls</h3>';
-            
-            const recentPolls = allPolls.slice(0, 3);
-            if (recentPolls.length === 0) {
-                container.innerHTML += '<div class="empty-state"><p>No polls yet</p></div>';
-                return;
-            }
-            
-            recentPolls.forEach(poll => {
-                container.appendChild(createPollCard(poll));
-            });
-        }
-
-        // ===== UPDATED: createPollCard with image support =====
         function createPollCard(poll) {
             const div = document.createElement('div');
             div.className = 'poll-card';
-            div.onclick = () => viewPoll(poll);
             
             const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
             const timeAgo = getTimeAgo(poll.createdAt);
             
-            // Add image if exists
             const imageHtml = poll.imageUrl ? 
                 `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image">` : '';
             
+            const categoryTag = poll.category && poll.category !== 'All' ? 
+                `<span class="category-tag"><i class="fas fa-tag"></i> ${escapeHtml(poll.category)}</span>` : '';
+            
             div.innerHTML = `
                 <div class="card-header">
-                    <div class="avatar">${escapeHtml(poll.creatorName?.[0] || 'U')}</div>
+                    <div class="avatar" onclick="event.stopPropagation(); viewUserProfile('${poll.createdBy}')">${escapeHtml(poll.creatorName?.[0] || 'U')}</div>
                     <div class="user-info">
-                        <h4>${escapeHtml(poll.creatorName || 'Anonymous')}</h4>
+                        <h4>
+                            <span class="username-link" onclick="event.stopPropagation(); viewUserProfile('${poll.createdBy}')">${escapeHtml(poll.creatorName || 'Anonymous')}</span>
+                        </h4>
                         <div class="time"><i class="far fa-clock"></i> ${escapeHtml(timeAgo)}</div>
                     </div>
                 </div>
                 <div class="poll-title">${escapeHtml(poll.title)}</div>
                 ${imageHtml}
                 <div class="poll-meta">
-                    <span><i class="fas fa-tag"></i> ${escapeHtml(poll.category || 'general')}</span>
+                    ${categoryTag}
                     <span><i class="fas fa-vote-yea"></i> ${totalVotes} votes</span>
+                    <span><i class="fas fa-comment"></i> ${poll.commentCount || 0} comments</span>
+                    ${poll.country ? `<span><i class="fas fa-globe"></i> ${escapeHtml(poll.country)}</span>` : ''}
+                </div>
+                <div class="poll-actions">
+                    <button class="action-btn" onclick="event.stopPropagation(); viewPollWithComments('${poll.id}')">
+                        <i class="fas fa-comment"></i>
+                        <span>Comments ${poll.commentCount ? `<span class="comment-count">${poll.commentCount}</span>` : ''}</span>
+                    </button>
                 </div>
             `;
             
             return div;
         }
 
-        // Helper function to escape HTML
+        // View poll with comments
+        function viewPollWithComments(pollId) {
+            const poll = allPolls.find(p => p.id === pollId);
+            if (!poll) return;
+            viewPoll(poll, true);
+        }
+
+        function viewPoll(poll, showComments = true) {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            
+            const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
+            
+            const imageHtml = poll.imageUrl ? 
+                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image" style="margin-bottom: 15px;">` : '';
+            
+            const categoryTag = poll.category && poll.category !== 'All' ? 
+                `<span class="category-tag" style="margin-bottom: 10px; display: inline-block;"><i class="fas fa-tag"></i> ${escapeHtml(poll.category)}</span>` : '';
+            
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>${escapeHtml(poll.title)}</h3>
+                        <i class="fas fa-times" style="font-size: 1.5rem; cursor: pointer;" onclick="this.closest('.modal').remove()"></i>
+                    </div>
+                    <div class="modal-body">
+                        ${categoryTag}
+                        ${imageHtml}
+                        <p style="margin-bottom: 20px;">${escapeHtml(poll.description || '')}</p>
+                        
+                        ${poll.options.map((opt, index) => `
+                            <div class="poll-option" onclick="selectOption(this, ${index})">
+                                <input type="radio" name="pollOption" value="${index}">
+                                <span style="flex: 1;">${escapeHtml(opt.text)}</span>
+                                <span class="vote-count">${opt.votes || 0} votes</span>
+                            </div>
+                        `).join('')}
+                        
+                        <div class="chart-container">
+                            <canvas id="pollChart-${poll.id}"></canvas>
+                        </div>
+                        
+                        <!-- Comments Section -->
+                        <div class="comments-section">
+                            <h4 class="comments-title">
+                                <i class="fas fa-comments"></i> Comments (${poll.commentCount || 0})
+                            </h4>
+                            <div id="comments-${poll.id}" class="comments-list"></div>
+                            
+                            ${currentUser ? `
+                                <div class="add-comment">
+                                    <input type="text" id="comment-input-${poll.id}" class="comment-input" placeholder="Add a comment..." maxlength="200">
+                                    <button class="comment-btn" onclick="submitComment('${poll.id}')">Post</button>
+                                </div>
+                            ` : `
+                                <p style="text-align: center; color: #999; margin-top: 10px;">
+                                    <a href="#" onclick="showSection('authSection'); this.closest('.modal').remove();">Login</a> to comment
+                                </p>
+                            `}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" style="flex: 2;" onclick="submitVote('${poll.id}')">
+                            <i class="fas fa-check"></i> Vote
+                        </button>
+                        <button class="btn btn-secondary" style="flex: 1;" onclick="this.closest('.modal').remove()">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Load comments
+            const commentsContainer = document.getElementById(`comments-${poll.id}`);
+            loadComments(poll.id, commentsContainer);
+            
+            setTimeout(() => {
+                const canvasId = `pollChart-${poll.id}`;
+                destroyChart(canvasId); // Destroy any existing chart on this canvas
+                const ctx = document.getElementById(canvasId)?.getContext('2d');
+                if (ctx && poll.options) {
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: poll.options.map(opt => escapeHtml(opt.text)),
+                            datasets: [{
+                                label: 'Votes',
+                                data: poll.options.map(opt => opt.votes || 0),
+                                backgroundColor: '#4267B2'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+            }, 100);
+        }
+
+        // Submit comment function
+        async function submitComment(pollId) {
+            const input = document.getElementById(`comment-input-${pollId}`);
+            const text = input.value.trim();
+            
+            if (await addComment(pollId, text)) {
+                input.value = '';
+                // Reload comments
+                const commentsContainer = document.getElementById(`comments-${pollId}`);
+                if (commentsContainer) {
+                    await loadComments(pollId, commentsContainer);
+                    
+                    // Update comment count in the poll object
+                    const pollIndex = allPolls.findIndex(p => p.id === pollId);
+                    if (pollIndex !== -1) {
+                        allPolls[pollIndex].commentCount = (allPolls[pollIndex].commentCount || 0) + 1;
+                    }
+                    
+                    // Update comment count in modal title
+                    const titleElement = commentsContainer.parentElement.querySelector('.comments-title');
+                    if (titleElement) {
+                        const currentCount = allPolls.find(p => p.id === pollId)?.commentCount || 0;
+                        titleElement.innerHTML = `<i class="fas fa-comments"></i> Comments (${currentCount})`;
+                    }
+                }
+            }
+        }
+
+        function selectOption(element, index) {
+            document.querySelectorAll('.poll-option').forEach(opt => {
+                opt.classList.remove('selected');
+                opt.querySelector('input').checked = false;
+            });
+            element.classList.add('selected');
+            element.querySelector('input').checked = true;
+        }
+
+        async function submitVote(pollId) {
+            if (!currentUser) {
+                showAlert('Please login to vote');
+                document.querySelector('.modal').remove();
+                showSection('authSection');
+                return;
+            }
+            
+            if (!checkRateLimit('vote')) {
+                return;
+            }
+            
+            const selected = document.querySelector('input[name="pollOption"]:checked');
+            if (!selected) {
+                showAlert('Select an option');
+                return;
+            }
+            
+            const optionIndex = parseInt(selected.value);
+            const pollRef = db.collection('polls').doc(pollId);
+            
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const pollDoc = await transaction.get(pollRef);
+                    if (!pollDoc.exists) {
+                        throw new Error('Poll does not exist');
+                    }
+                    
+                    const poll = pollDoc.data();
+                    poll.options[optionIndex].votes++;
+                    
+                    transaction.update(pollRef, {
+                        options: poll.options
+                    });
+                });
+                
+                await db.collection('users').doc(currentUser.uid).update({
+                    votes: firebase.firestore.FieldValue.increment(1)
+                });
+                
+                if (currentUser) {
+                    currentUser.votes = (currentUser.votes || 0) + 1;
+                }
+                
+                showAlert('Vote recorded!');
+                document.querySelector('.modal').remove();
+                await loadPolls();
+                loadRandomizedFeed();
+            } catch (error) {
+                console.error('Error voting:', error);
+                showAlert('Failed to record vote');
+            }
+        }
+
+        // ===== AUTH FUNCTIONS =====
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            
+            if (tab === 'login') {
+                document.querySelector('.auth-tab').classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelectorAll('.auth-tab')[1].classList.add('active');
+                document.getElementById('signupForm').classList.add('active');
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            if (!checkRateLimit('login')) {
+                return;
+            }
+            
+            const email = sanitizeInput(document.getElementById('loginEmail').value);
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!email || !password) {
+                showAlert('Email and password required');
+                return;
+            }
+            
+            try {
+                const btn = document.getElementById('loginBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+                
+                await auth.signInWithEmailAndPassword(email, password);
+                showSection('homeSection');
+            } catch (error) {
+                console.error('Login error:', error);
+                let message = 'Login failed';
+                if (error.code === 'auth/user-not-found') message = 'User not found';
+                if (error.code === 'auth/wrong-password') message = 'Wrong password';
+                if (error.code === 'auth/too-many-requests') message = 'Too many attempts. Try later';
+                showAlert(message);
+            } finally {
+                const btn = document.getElementById('loginBtn');
+                btn.disabled = false;
+                btn.innerHTML = 'Login';
+            }
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            
+            if (!checkRateLimit('signup')) {
+                return;
+            }
+            
+            const name = sanitizeInput(document.getElementById('signupName').value);
+            const email = sanitizeInput(document.getElementById('signupEmail').value);
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('signupConfirmPassword').value;
+            const country = document.getElementById('signupCountry').value;
+            
+            if (name.length < 2) {
+                showAlert('Name must be at least 2 characters');
+                return;
+            }
+            
+            if (password.length < 8) {
+                showAlert('Password must be at least 8 characters');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showAlert('Passwords do not match');
+                return;
+            }
+            
+            if (!country) {
+                showAlert('Please select your country');
+                return;
+            }
+            
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasLowerCase = /[a-z]/.test(password);
+            const hasNumbers = /\d/.test(password);
+            
+            if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+                showAlert('Password must contain uppercase, lowercase and numbers');
+                return;
+            }
+            
+            try {
+                const btn = document.getElementById('signupBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
+                
+                const result = await auth.createUserWithEmailAndPassword(email, password);
+                
+                await db.collection('users').doc(result.user.uid).set({
+                    name: name,
+                    email: email,
+                    country: country,
+                    polls: 0,
+                    votes: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastActive: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showAlert('Account created successfully!');
+                showSection('homeSection');
+            } catch (error) {
+                console.error('Signup error:', error);
+                let message = 'Signup failed';
+                if (error.code === 'auth/email-already-in-use') message = 'Email already in use';
+                if (error.code === 'auth/weak-password') message = 'Password too weak';
+                showAlert(message);
+            } finally {
+                const btn = document.getElementById('signupBtn');
+                btn.disabled = false;
+                btn.innerHTML = 'Sign Up';
+            }
+        }
+
+        async function logout() {
+            await auth.signOut();
+            showAlert('Logged out');
+            showSection('homeSection');
+        }
+
+        async function confirmDeleteAccount() {
+            if (!currentUser) return;
+            
+            const confirm = prompt('Type "DELETE" to confirm account deletion:');
+            if (confirm !== 'DELETE') {
+                showAlert('Deletion cancelled');
+                return;
+            }
+            
+            try {
+                const userPolls = await db.collection('polls')
+                    .where('createdBy', '==', currentUser.uid)
+                    .get();
+                    
+                const batch = db.batch();
+                userPolls.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                batch.delete(db.collection('users').doc(currentUser.uid));
+                
+                await batch.commit();
+                
+                const user = auth.currentUser;
+                await user.delete();
+                
+                showAlert('Account deleted');
+                showSection('homeSection');
+            } catch (error) {
+                console.error('Delete error:', error);
+                showAlert('Failed to delete account');
+            }
+        }
+
+        function showAlert(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert';
+            alertDiv.innerHTML = `<i class="fas fa-info-circle"></i> ${escapeHtml(message)}`;
+            document.body.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 3000);
+        }
+
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -1406,6 +2663,7 @@
         }
 
         function getTimeAgo(date) {
+            if (!date) return 'recently';
             const seconds = Math.floor((new Date() - date) / 1000);
             if (seconds < 60) return 'just now';
             if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
@@ -1438,7 +2696,6 @@
             document.getElementById('optionsCount').textContent = `${optionCount}/10 options`;
         }
 
-        // ===== UPDATED: Form submission with image upload =====
         document.getElementById('createPollForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1448,17 +2705,14 @@
                 return;
             }
             
-            // Check rate limit
             if (!checkRateLimit('createPoll')) {
                 return;
             }
             
-            // Get and sanitize inputs
             const title = sanitizeInput(document.getElementById('pollTitle').value);
             const description = sanitizeInput(document.getElementById('pollDescription').value);
             const category = document.getElementById('pollCategory').value;
             
-            // Validate title length
             if (title.length < 5) {
                 showAlert('Title must be at least 5 characters');
                 return;
@@ -1472,24 +2726,20 @@
                     votes: 0
                 }));
             
-            // Validate options
             if (!validatePollOptions(options)) {
                 showAlert('Invalid options. Check for duplicates or length.');
                 return;
             }
             
-            // Get image file if present
             const imageInput = document.getElementById('pollImage');
             const imageFile = imageInput.files[0];
             
             try {
-                // Disable button to prevent double submission
                 const btn = document.getElementById('createPollBtn');
                 btn.disabled = true;
                 
                 let imageUrl = null;
                 
-                // Upload image to Supabase if present
                 if (imageFile) {
                     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading image...';
                     imageUrl = await uploadImageToSupabase(imageFile);
@@ -1497,7 +2747,9 @@
                 
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating poll...';
                 
-                // Create poll in Firestore
+                // Generate random weight for shuffling (0-1)
+                const randomWeight = Math.random();
+                
                 const pollData = {
                     title,
                     description,
@@ -1506,48 +2758,47 @@
                     createdBy: currentUser.uid,
                     creatorName: currentUser.name,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    totalVotes: 0
+                    totalVotes: 0,
+                    commentCount: 0,
+                    country: currentUser.country || 'Global',
+                    randomWeight: randomWeight
                 };
                 
-                // Add image URL if uploaded
                 if (imageUrl) {
                     pollData.imageUrl = imageUrl;
                 }
                 
                 await db.collection('polls').add(pollData);
                 
-                // Update user's poll count
                 await db.collection('users').doc(currentUser.uid).update({
                     polls: firebase.firestore.FieldValue.increment(1)
                 });
                 
-                // Update local user data
-                currentUser.polls++;
-                document.getElementById('profilePolls').innerHTML = currentUser.polls;
+                if (currentUser) {
+                    currentUser.polls = (currentUser.polls || 0) + 1;
+                }
+                document.getElementById('profilePolls').innerHTML = currentUser ? currentUser.polls : 0;
                 
                 showAlert('Poll created!');
                 e.target.reset();
                 
-                // Reset image preview
                 document.getElementById('imagePreviewContainer').style.display = 'none';
                 document.getElementById('imagePreview').src = '';
                 
-                // Reset options
                 document.getElementById('optionsContainer').innerHTML = '';
                 optionCount = 0;
                 for (let i = 0; i < 2; i++) {
                     addPollOption();
                 }
                 
-                // Reload polls
                 await loadPolls();
                 
-                // If profile is open, refresh it
                 if (document.getElementById('profileSection').classList.contains('active-section')) {
                     loadUserProfile();
                 }
                 
-                showSection('pollsSection');
+                showSection('homeSection');
+                loadRandomizedFeed();
             } catch (error) {
                 console.error('Error:', error);
                 showAlert('Failed to create poll: ' + error.message);
@@ -1557,318 +2808,6 @@
                 btn.innerHTML = '<i class="fas fa-rocket"></i> Create Poll';
             }
         });
-
-        // ===== UPDATED: VIEW POLL with image support =====
-        function viewPoll(poll) {
-            const modal = document.createElement('div');
-            modal.className = 'modal';
-            
-            const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
-            
-            // Add image if exists
-            const imageHtml = poll.imageUrl ? 
-                `<img src="${escapeHtml(poll.imageUrl)}" alt="Poll image" class="poll-image" style="margin-bottom: 15px;">` : '';
-            
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>${escapeHtml(poll.title)}</h3>
-                        <i class="fas fa-times" style="font-size: 1.5rem; cursor: pointer;" onclick="this.closest('.modal').remove()"></i>
-                    </div>
-                    <div class="modal-body">
-                        ${imageHtml}
-                        <p style="margin-bottom: 20px;">${escapeHtml(poll.description || '')}</p>
-                        
-                        ${poll.options.map((opt, index) => `
-                            <div class="poll-option" onclick="selectOption(this, ${index})">
-                                <input type="radio" name="pollOption" value="${index}">
-                                <span style="flex: 1;">${escapeHtml(opt.text)}</span>
-                                <span class="vote-count">${opt.votes || 0} votes</span>
-                            </div>
-                        `).join('')}
-                        
-                        <div class="chart-container">
-                            <canvas id="pollChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-primary" style="flex: 2;" onclick="submitVote('${poll.id}')">
-                            <i class="fas fa-check"></i> Vote
-                        </button>
-                        <button class="btn btn-secondary" style="flex: 1;" onclick="this.closest('.modal').remove()">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            setTimeout(() => {
-                const ctx = document.getElementById('pollChart')?.getContext('2d');
-                if (ctx) {
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: poll.options.map(opt => escapeHtml(opt.text)),
-                            datasets: [{
-                                label: 'Votes',
-                                data: poll.options.map(opt => opt.votes || 0),
-                                backgroundColor: '#0066cc'
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: true,
-                            plugins: { legend: { display: false } }
-                        }
-                    });
-                }
-            }, 100);
-        }
-
-        function selectOption(element, index) {
-            document.querySelectorAll('.poll-option').forEach(opt => {
-                opt.classList.remove('selected');
-                opt.querySelector('input').checked = false;
-            });
-            element.classList.add('selected');
-            element.querySelector('input').checked = true;
-        }
-
-        async function submitVote(pollId) {
-            if (!currentUser) {
-                showAlert('Please login to vote');
-                document.querySelector('.modal').remove();
-                showSection('authSection');
-                return;
-            }
-            
-            // Check rate limit
-            if (!checkRateLimit('vote')) {
-                return;
-            }
-            
-            const selected = document.querySelector('input[name="pollOption"]:checked');
-            if (!selected) {
-                showAlert('Select an option');
-                return;
-            }
-            
-            const optionIndex = parseInt(selected.value);
-            const pollRef = db.collection('polls').doc(pollId);
-            
-            try {
-                // Use transaction to prevent race conditions
-                await db.runTransaction(async (transaction) => {
-                    const pollDoc = await transaction.get(pollRef);
-                    if (!pollDoc.exists) {
-                        throw new Error('Poll does not exist');
-                    }
-                    
-                    const poll = pollDoc.data();
-                    
-                    // Check if user already voted (you'd need to track this)
-                    // This is a simplified version
-                    
-                    poll.options[optionIndex].votes++;
-                    
-                    transaction.update(pollRef, {
-                        options: poll.options
-                    });
-                });
-                
-                await db.collection('users').doc(currentUser.uid).update({
-                    votes: firebase.firestore.FieldValue.increment(1)
-                });
-                
-                // Update local user data
-                currentUser.votes++;
-                document.getElementById('profileVotes').innerHTML = currentUser.votes;
-                
-                showAlert('Vote recorded!');
-                document.querySelector('.modal').remove();
-                await loadPolls();
-            } catch (error) {
-                console.error('Error voting:', error);
-                showAlert('Failed to record vote');
-            }
-        }
-
-        // ===== AUTH FUNCTIONS =====
-        function switchAuthTab(tab) {
-            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-            
-            if (tab === 'login') {
-                document.querySelector('.auth-tab').classList.add('active');
-                document.getElementById('loginForm').classList.add('active');
-            } else {
-                document.querySelectorAll('.auth-tab')[1].classList.add('active');
-                document.getElementById('signupForm').classList.add('active');
-            }
-        }
-
-        async function handleLogin(e) {
-            e.preventDefault();
-            
-            // Check rate limit
-            if (!checkRateLimit('login')) {
-                return;
-            }
-            
-            const email = sanitizeInput(document.getElementById('loginEmail').value);
-            const password = document.getElementById('loginPassword').value;
-            
-            // Basic validation
-            if (!email || !password) {
-                showAlert('Email and password required');
-                return;
-            }
-            
-            try {
-                const btn = document.getElementById('loginBtn');
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
-                
-                await auth.signInWithEmailAndPassword(email, password);
-                showSection('homeSection');
-            } catch (error) {
-                console.error('Login error:', error);
-                let message = 'Login failed';
-                if (error.code === 'auth/user-not-found') message = 'User not found';
-                if (error.code === 'auth/wrong-password') message = 'Wrong password';
-                if (error.code === 'auth/too-many-requests') message = 'Too many attempts. Try later';
-                showAlert(message);
-            } finally {
-                const btn = document.getElementById('loginBtn');
-                btn.disabled = false;
-                btn.innerHTML = 'Login';
-            }
-        }
-
-        async function handleSignup(e) {
-            e.preventDefault();
-            
-            // Check rate limit
-            if (!checkRateLimit('signup')) {
-                return;
-            }
-            
-            const name = sanitizeInput(document.getElementById('signupName').value);
-            const email = sanitizeInput(document.getElementById('signupEmail').value);
-            const password = document.getElementById('signupPassword').value;
-            const confirmPassword = document.getElementById('signupConfirmPassword').value;
-            
-            // Validate inputs
-            if (name.length < 2) {
-                showAlert('Name must be at least 2 characters');
-                return;
-            }
-            
-            if (password.length < 8) {
-                showAlert('Password must be at least 8 characters');
-                return;
-            }
-            
-            if (password !== confirmPassword) {
-                showAlert('Passwords do not match');
-                return;
-            }
-            
-            // Check password strength
-            const hasUpperCase = /[A-Z]/.test(password);
-            const hasLowerCase = /[a-z]/.test(password);
-            const hasNumbers = /\d/.test(password);
-            
-            if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
-                showAlert('Password must contain uppercase, lowercase and numbers');
-                return;
-            }
-            
-            try {
-                const btn = document.getElementById('signupBtn');
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
-                
-                const result = await auth.createUserWithEmailAndPassword(email, password);
-                
-                // Create user document
-                await db.collection('users').doc(result.user.uid).set({
-                    name: name,
-                    email: email,
-                    polls: 0,
-                    votes: 0,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    lastActive: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                showAlert('Account created successfully!');
-                showSection('homeSection');
-            } catch (error) {
-                console.error('Signup error:', error);
-                let message = 'Signup failed';
-                if (error.code === 'auth/email-already-in-use') message = 'Email already in use';
-                if (error.code === 'auth/weak-password') message = 'Password too weak';
-                showAlert(message);
-            } finally {
-                const btn = document.getElementById('signupBtn');
-                btn.disabled = false;
-                btn.innerHTML = 'Sign Up';
-            }
-        }
-
-        async function logout() {
-            await auth.signOut();
-            showAlert('Logged out');
-            showSection('homeSection');
-        }
-
-        // Delete account function
-        async function confirmDeleteAccount() {
-            if (!currentUser) return;
-            
-            const confirm = prompt('Type "DELETE" to confirm account deletion:');
-            if (confirm !== 'DELETE') {
-                showAlert('Deletion cancelled');
-                return;
-            }
-            
-            try {
-                // Delete user's polls
-                const userPolls = await db.collection('polls')
-                    .where('createdBy', '==', currentUser.uid)
-                    .get();
-                    
-                const batch = db.batch();
-                userPolls.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                // Delete user document
-                batch.delete(db.collection('users').doc(currentUser.uid));
-                
-                await batch.commit();
-                
-                // Delete auth user
-                const user = auth.currentUser;
-                await user.delete();
-                
-                showAlert('Account deleted');
-                showSection('homeSection');
-            } catch (error) {
-                console.error('Delete error:', error);
-                showAlert('Failed to delete account');
-            }
-        }
-
-        function showAlert(message) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert';
-            alertDiv.innerHTML = `<i class="fas fa-info-circle"></i> ${escapeHtml(message)}`;
-            document.body.appendChild(alertDiv);
-            setTimeout(() => alertDiv.remove(), 3000);
-        }
 
         // Make functions globally available
         window.showSection = showSection;
@@ -1880,10 +2819,20 @@
         window.logout = logout;
         window.confirmDeleteAccount = confirmDeleteAccount;
         window.viewPoll = viewPoll;
+        window.viewPollWithComments = viewPollWithComments;
         window.selectOption = selectOption;
         window.submitVote = submitVote;
         window.previewImage = previewImage;
         window.removeSelectedImage = removeSelectedImage;
+        window.loadRandomizedFeed = loadRandomizedFeed;
+        window.handleSearchInput = handleSearchInput;
+        window.clearSearch = clearSearch;
+        window.viewPollStats = viewPollStats;
+        window.addComment = addComment;
+        window.loadComments = loadComments;
+        window.submitComment = submitComment;
+        window.deleteOwnPoll = deleteOwnPoll;
+        window.viewUserProfile = viewUserProfile;
     </script>
 </body>
 </html>
