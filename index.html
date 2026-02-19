@@ -2393,7 +2393,7 @@
 
         function copyReferralLink() {
             if (!currentUser || !currentUser.referralCode) return;
-            const referralLink = `https://poats.app/signup?ref=${currentUser.referralCode}`;
+            const referralLink = `https://poat.netlfy.app/signup?ref=${currentUser.referralCode}`;
             navigator.clipboard.writeText(referralLink).then(() => {
                 showAlert('Referral link copied to clipboard!');
             }).catch(() => {
