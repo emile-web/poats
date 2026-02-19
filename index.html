@@ -1940,7 +1940,7 @@
         // ===== SUPABASE CONFIG =====
         const SUPABASE_URL = 'https://pzwhqznvqmjvgugbnzgy.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_TdywFipJUq-1Fen6X4cVeA_xTFgwToG';
-        const SUPABASE_BUCKET = 'media'; // Change this to your bucket name
+        const SUPABASE_BUCKET = 'media';
         
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -2199,7 +2199,6 @@
                 const photoUrl = urlData.publicUrl;
                 console.log('Photo URL:', photoUrl);
                 
-                // Test image load
                 const img = new Image();
                 img.onload = () => console.log('Image loaded successfully');
                 img.onerror = () => console.error('Image failed to load');
@@ -2224,7 +2223,7 @@
             if (avatarLarge) {
                 avatarLarge.innerHTML = `<img src="${photoUrl}" alt="Profile" style="width:100%; height:100%; object-fit:cover;">`;
             }
-            loadPolls(); // Refresh polls to update avatars
+            loadPolls();
         }
 
         // ===== SECURITY =====
@@ -2307,7 +2306,7 @@
             }, SESSION_DURATION);
         }
 
-        // ===== REFERRAL SYSTEM =====
+        // ===== REFERRAL SYSTEM - FIXED VERSION =====
         function generateReferralCode(userId, username) {
             const base = (username || 'USER').substring(0, 4).toUpperCase().padEnd(4, 'X');
             const suffix = userId.substring(0, 4).toUpperCase();
@@ -2318,6 +2317,8 @@
             if (!referralCode) return;
             
             try {
+                console.log("Processing referral code:", referralCode);
+                
                 const usersSnapshot = await db.collection('users')
                     .where('referralCode', '==', referralCode)
                     .get();
@@ -2326,18 +2327,38 @@
                     const referrerDoc = usersSnapshot.docs[0];
                     const referrerId = referrerDoc.id;
                     
+                    // Don't allow self-referral
+                    if (referrerId === newUserId) {
+                        console.log("Self-referral not allowed");
+                        return;
+                    }
+                    
+                    // Check if this referral was already processed
+                    const existingReferral = await db.collection('referrals')
+                        .where('referrerId', '==', referrerId)
+                        .where('referredUserId', '==', newUserId)
+                        .get();
+                    
+                    if (!existingReferral.empty) {
+                        console.log("Referral already processed");
+                        return;
+                    }
+                    
+                    // Record the referral
                     await db.collection('referrals').add({
                         referrerId: referrerId,
                         referredUserId: newUserId,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                        pointsAwarded: false
+                        pointsAwarded: true
                     });
                     
+                    // ✅ GIVE POINTS TO REFERRER (YOU)
                     await db.collection('users').doc(referrerId).update({
                         referralCount: firebase.firestore.FieldValue.increment(1),
                         points: firebase.firestore.FieldValue.increment(20)
                     });
                     
+                    // Check for 10 referrals bonus
                     const referrerData = await db.collection('users').doc(referrerId).get();
                     const referralCount = referrerData.data().referralCount || 0;
                     
@@ -2345,11 +2366,13 @@
                         await db.collection('users').doc(referrerId).update({
                             points: firebase.firestore.FieldValue.increment(200)
                         });
+                        console.log("Added 200 bonus points for 10 referrals!");
                     }
                     
-                    await db.collection('users').doc(newUserId).update({
-                        points: firebase.firestore.FieldValue.increment(20)
-                    });
+                    // ❌ REMOVED: This line was giving points to new user again
+                    // New user already gets 20 points in signup function
+                    
+                    console.log("Referral processed successfully!");
                 }
             } catch (error) {
                 console.error('Error processing referral:', error);
@@ -2393,6 +2416,7 @@
 
         function copyReferralLink() {
             if (!currentUser || !currentUser.referralCode) return;
+            // FIXED: Changed netlfy.app to netlify.app
             const referralLink = `https://poat.netlify.app/signup?ref=${currentUser.referralCode}`;
             navigator.clipboard.writeText(referralLink).then(() => {
                 showAlert('Referral link copied to clipboard!');
@@ -3017,6 +3041,20 @@
             document.body.appendChild(popup);
         }
 
+        // ===== CHECK REFERRAL CODE FROM URL =====
+        function checkUrlForReferral() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('ref');
+            if (refCode) {
+                showSection('authSection');
+                switchAuthTab('signup');
+                const refInput = document.getElementById('signupReferralCode');
+                if (refInput) {
+                    refInput.value = refCode;
+                }
+            }
+        }
+
         // ===== INIT =====
         document.addEventListener('DOMContentLoaded', () => {
             loadDarkModePreference();
@@ -3121,6 +3159,9 @@
                 document.getElementById('loadingState').style.display = 'none';
                 showSection('homeSection');
                 loadFeed();
+                
+                // Check for referral in URL
+                checkUrlForReferral();
             });
 
             for (let i = 0; i < 2; i++) addPollOption();
@@ -4064,5 +4105,6 @@
         window.openFullscreenImage = openFullscreenImage;
         window.closeFullscreenImage = closeFullscreenImage;
     </script>
+    <!-- Important: Create a _redirects file with: /* /FL.html 200 -->
 </body>
 </html>
