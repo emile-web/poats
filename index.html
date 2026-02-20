@@ -16,12 +16,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Google tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KSBHHXKHQ"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', 'G-8KSBHHXKHQ'); // Replace G-XXXXXXXXXX with your GA4 Measurement ID
+        gtag('config', 'G-8KSBHHXKHQ');
     </script>
 
     <style>
@@ -1543,7 +1543,7 @@
 </head>
 <body>
     <div class="container">
-        <!-- header – unchanged (kept as original) -->
+        <!-- header – unchanged -->
         <div class="header">
             <h1><i class="fas fa-poll"></i> POATS</h1>
             <div class="header-actions" id="headerActions">
@@ -1966,7 +1966,7 @@
     </div>
 
     <script>
-        // ===== FIREBASE CONFIG (unchanged) =====
+        // ===== FIREBASE CONFIG =====
         const firebaseConfig = {
             apiKey: "AIzaSyCNIsjSl60AlGmtmtC4H3uy5bQ_WCG2HV0",
             authDomain: "poats-dd25a.firebaseapp.com",
@@ -2044,7 +2044,7 @@
             }
         }, true);
 
-        // ===== HELPER FUNCTIONS (unchanged) =====
+        // ===== HELPER FUNCTIONS =====
         function destroyChart(canvasId) {
             const canvas = document.getElementById(canvasId);
             if (canvas) {
@@ -2178,6 +2178,7 @@
             const fileName = `poll-${mediaType}-${timestamp}-${randomString}.${fileExt}`;
             
             try {
+                console.log(`Uploading ${mediaType} to Supabase...`);
                 const { data, error } = await supabaseClient.storage
                     .from(SUPABASE_BUCKET)
                     .upload(fileName, file, { cacheControl: '3600', upsert: false });
@@ -2188,6 +2189,7 @@
                     .from(SUPABASE_BUCKET)
                     .getPublicUrl(fileName);
                 
+                console.log('Media uploaded, public URL:', urlData.publicUrl);
                 return urlData.publicUrl;
             } catch (error) {
                 console.error('Error uploading to Supabase:', error);
@@ -2262,7 +2264,7 @@
             loadPolls();
         }
 
-        // ===== SECURITY (unchanged) =====
+        // ===== SECURITY =====
         const rateLimits = {
             login: { count: 0, lastAttempt: 0, blockedUntil: 0 },
             signup: { count: 0, lastAttempt: 0, blockedUntil: 0 },
@@ -2342,7 +2344,7 @@
             }, SESSION_DURATION);
         }
 
-        // ===== REFERRAL SYSTEM (unchanged) =====
+        // ===== REFERRAL SYSTEM =====
         function generateReferralCode(userId, username) {
             const base = (username || 'USER').substring(0, 4).toUpperCase().padEnd(4, 'X');
             const suffix = userId.substring(0, 4).toUpperCase();
@@ -2452,7 +2454,7 @@
             });
         }
 
-        // ===== ADVERTISEMENT SYSTEM (unchanged) =====
+        // ===== ADVERTISEMENT SYSTEM (FIXED) =====
         async function createAdvertisement() {
             if (!currentUser) {
                 showAlert('Please login first');
@@ -2478,10 +2480,13 @@
                 return;
             }
             
+            console.log('Starting ad creation...');
+            
             try {
                 let imageUrl = null;
                 
                 if (imageFile) {
+                    console.log('Uploading image to Supabase...');
                     const timestamp = Date.now();
                     const randomString = Math.random().toString(36).substring(2, 15);
                     const fileExt = imageFile.name.split('.').pop();
@@ -2498,12 +2503,14 @@
                         .getPublicUrl(fileName);
                     
                     imageUrl = urlData.publicUrl;
+                    console.log('Image uploaded, URL:', imageUrl);
                 }
                 
+                // Set expiration to 6 hours from now (as a Date object)
                 const expiresAt = new Date();
                 expiresAt.setHours(expiresAt.getHours() + 6);
                 
-                await db.collection('advertisements').add({
+                const adData = {
                     userId: currentUser.uid,
                     userName: currentUser.name,
                     title: title,
@@ -2511,10 +2518,14 @@
                     link: link || '',
                     imageUrl: imageUrl,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    expiresAt: firebase.firestore.FieldValue.serverTimestamp(expiresAt),
+                    expiresAt: expiresAt,          // ✅ FIXED: store as Date
                     active: true
-                });
+                };
                 
+                console.log('Saving ad to Firestore:', adData);
+                await db.collection('advertisements').add(adData);
+                
+                // Deduct points
                 await db.collection('users').doc(currentUser.uid).update({
                     points: firebase.firestore.FieldValue.increment(-200)
                 });
@@ -2525,6 +2536,7 @@
                 
                 showAlert('Advertisement created successfully! It will run for 6 hours.');
                 
+                // Clear form
                 document.getElementById('adTitle').value = '';
                 document.getElementById('adDescription').value = '';
                 document.getElementById('adLink').value = '';
@@ -2533,9 +2545,14 @@
                 
                 switchAdTab('myads');
                 loadUserAds();
+                
+                // Optional: refresh feed if home is active
+                if (document.getElementById('homeSection').classList.contains('active-section')) {
+                    loadFeed();
+                }
             } catch (error) {
                 console.error('Error creating advertisement:', error);
-                showAlert('Failed to create advertisement');
+                showAlert('Failed to create advertisement: ' + error.message);
             }
         }
 
@@ -2569,10 +2586,13 @@
             }
             
             try {
+                console.log('Loading ads for user:', currentUser.uid);
                 const snapshot = await db.collection('advertisements')
                     .where('userId', '==', currentUser.uid)
                     .orderBy('createdAt', 'desc')
                     .get();
+                
+                console.log(`Found ${snapshot.size} ads`);
                 
                 const container = document.getElementById('myAdsList');
                 container.innerHTML = '';
@@ -2585,7 +2605,7 @@
                 snapshot.forEach(doc => {
                     const ad = doc.data();
                     const createdAt = ad.createdAt?.toDate() || new Date();
-                    const expiresAt = ad.expiresAt?.toDate() || new Date();
+                    const expiresAt = ad.expiresAt?.toDate ? ad.expiresAt.toDate() : new Date(ad.expiresAt);
                     const timeLeft = Math.max(0, expiresAt - new Date());
                     const hoursLeft = Math.floor(timeLeft / 3600000);
                     
@@ -2594,7 +2614,7 @@
                     
                     let imageHtml = '';
                     if (ad.imageUrl) {
-                        imageHtml = `<img src="${ad.imageUrl}" alt="Ad" style="width:100%; max-height:100px; object-fit:cover; border-radius:4px; margin-bottom:8px;">`;
+                        imageHtml = `<img src="${ad.imageUrl}" alt="Ad" style="width:100%; max-height:100px; object-fit:cover; border-radius:4px; margin-bottom:8px;" onerror="this.style.display='none'">`;
                     }
                     
                     adDiv.innerHTML = `
@@ -2614,27 +2634,35 @@
                 });
             } catch (error) {
                 console.error('Error loading ads:', error);
+                showAlert('Failed to load your ads');
             }
         }
 
         async function loadActiveAds() {
             try {
+                console.log('Loading active ads...');
                 const now = new Date();
                 const snapshot = await db.collection('advertisements')
                     .where('active', '==', true)
                     .get();
                 
+                console.log(`Fetched ${snapshot.size} ads with active=true`);
+                
                 const activeAds = [];
                 snapshot.forEach(doc => {
                     const ad = doc.data();
-                    const expiresAt = ad.expiresAt?.toDate() || new Date();
+                    const expiresAt = ad.expiresAt?.toDate ? ad.expiresAt.toDate() : new Date(ad.expiresAt);
                     if (expiresAt > now) {
                         activeAds.push({ id: doc.id, ...ad });
                     } else {
-                        db.collection('advertisements').doc(doc.id).update({ active: false });
+                        // Mark as expired in background
+                        db.collection('advertisements').doc(doc.id).update({ active: false })
+                            .then(() => console.log(`Ad ${doc.id} expired and deactivated`))
+                            .catch(err => console.error('Failed to deactivate ad', err));
                     }
                 });
                 
+                console.log(`${activeAds.length} active ads after expiration check`);
                 return activeAds;
             } catch (error) {
                 console.error('Error loading active ads:', error);
@@ -3022,10 +3050,9 @@
             }
         }
 
-        // ===== SHARE – MODIFIED TO INCLUDE DIRECT LINK COPY =====
+        // ===== SHARE =====
         function sharePoll(poll, platform) {
             const text = `Check out this poll: ${poll.title} on POATS`;
-            // Direct link to the poll using poll id (fragment)
             const pollLink = `${window.location.origin}${window.location.pathname}#poll-${poll.id}`;
             
             if (platform === 'copy') {
@@ -3086,22 +3113,19 @@
             document.body.appendChild(popup);
         }
 
-        // ===== CHECK URL FOR POLL ID (direct access) =====
+        // ===== CHECK URL FOR POLL ID =====
         function checkUrlForPoll() {
             const hash = window.location.hash;
             if (hash && hash.startsWith('#poll-')) {
-                const pollId = hash.substring(6); // remove '#poll-'
-                // Wait for polls to load then open
+                const pollId = hash.substring(6);
                 const interval = setInterval(() => {
                     const poll = allPolls.find(p => p.id === pollId);
                     if (poll) {
                         clearInterval(interval);
                         incrementPollViews(pollId);
                         viewPoll(poll, true);
-                        // Optionally switch to home section but modal already shows
                     }
                 }, 300);
-                // Timeout after 5 seconds
                 setTimeout(() => clearInterval(interval), 5000);
             }
         }
@@ -3226,7 +3250,7 @@
                 loadFeed();
                 
                 checkUrlForReferral();
-                checkUrlForPoll(); // Check for direct poll link
+                checkUrlForPoll();
             });
 
             for (let i = 0; i < 2; i++) addPollOption();
@@ -3304,7 +3328,7 @@
             div.className = 'advertisement-card small';
             
             let imageHtml = '';
-            if (ad.imageUrl) imageHtml = `<img src="${ad.imageUrl}" alt="Ad" class="ad-image">`;
+            if (ad.imageUrl) imageHtml = `<img src="${ad.imageUrl}" alt="Ad" class="ad-image" onerror="this.style.display='none'">`;
             
             div.innerHTML = `
                 <span class="ad-label">Ad</span>
@@ -4127,7 +4151,7 @@
             }
         });
 
-        // Make functions globally available (including new sharePoll)
+        // Make functions globally available
         window.showSection = showSection;
         window.addPollOption = addPollOption;
         window.updateOptionCount = updateOptionCount;
@@ -4159,7 +4183,7 @@
         window.uploadProfilePhoto = uploadProfilePhoto;
         window.copyReferralLink = copyReferralLink;
         window.switchAdTab = switchAdTab;
-        window.createAdvertisement = createAdvertisement;
+        window.createAdvertisement = createAdvertisement;   // FIXED version
         window.fillAdSuggestion = fillAdSuggestion;
         window.previewAdImage = previewAdImage;
         window.removeAdImage = removeAdImage;
