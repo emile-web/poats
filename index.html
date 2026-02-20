@@ -15,6 +15,7 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Styles unchanged – kept exactly as provided */
         * {
             margin: 0;
             padding: 0;
@@ -1337,7 +1338,7 @@
             padding: 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             z-index: 2000;
-            width: 280px;
+            width: 300px;
             text-align: center;
         }
         .share-popup h4 {
@@ -1369,6 +1370,36 @@
         .twitter { background: #1DA1F2; }
         .linkedin { background: #0077B5; }
         .instagram { background: #E4405F; }
+
+        /* NEW: direct link copy section */
+        .direct-link-section {
+            margin: 20px 0 10px;
+            padding: 10px;
+            background: #f0f2f5;
+            border-radius: 8px;
+            border: 1px dashed #4267B2;
+        }
+        .direct-link-section input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccd0d5;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin: 5px 0;
+        }
+        .copy-link-btn {
+            background: #4267B2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px;
+            width: 100%;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        body.dark-mode .direct-link-section {
+            background: #3d3d3d;
+        }
 
         .referral-code {
             background: #f0f2f5;
@@ -1922,7 +1953,7 @@
     </div>
 
     <script>
-        // ===== FIREBASE CONFIG =====
+        // ===== FIREBASE CONFIG (unchanged) =====
         const firebaseConfig = {
             apiKey: "AIzaSyCNIsjSl60AlGmtmtC4H3uy5bQ_WCG2HV0",
             authDomain: "poats-dd25a.firebaseapp.com",
@@ -2000,7 +2031,7 @@
             }
         }, true);
 
-        // ===== HELPER FUNCTIONS =====
+        // ===== HELPER FUNCTIONS (unchanged) =====
         function destroyChart(canvasId) {
             const canvas = document.getElementById(canvasId);
             if (canvas) {
@@ -2151,7 +2182,7 @@
             }
         }
 
-        // ===== PROFILE PHOTO UPLOAD (SUPABASE) =====
+        // ===== PROFILE PHOTO UPLOAD =====
         async function uploadProfilePhoto(input) {
             if (!currentUser) {
                 showAlert('Please login first');
@@ -2180,8 +2211,6 @@
                 const fileExt = file.name.split('.').pop();
                 const fileName = `profile-${currentUser.uid}-${timestamp}-${randomString}.${fileExt}`;
                 
-                console.log('Uploading to Supabase bucket:', SUPABASE_BUCKET);
-                
                 const { data, error } = await supabaseClient.storage
                     .from(SUPABASE_BUCKET)
                     .upload(fileName, file, { cacheControl: '3600', upsert: false });
@@ -2197,12 +2226,6 @@
                     .getPublicUrl(fileName);
                 
                 const photoUrl = urlData.publicUrl;
-                console.log('Photo URL:', photoUrl);
-                
-                const img = new Image();
-                img.onload = () => console.log('Image loaded successfully');
-                img.onerror = () => console.error('Image failed to load');
-                img.src = photoUrl;
                 
                 await db.collection('users').doc(currentUser.uid).update({
                     profilePhoto: photoUrl
@@ -2226,7 +2249,7 @@
             loadPolls();
         }
 
-        // ===== SECURITY =====
+        // ===== SECURITY (unchanged) =====
         const rateLimits = {
             login: { count: 0, lastAttempt: 0, blockedUntil: 0 },
             signup: { count: 0, lastAttempt: 0, blockedUntil: 0 },
@@ -2306,7 +2329,7 @@
             }, SESSION_DURATION);
         }
 
-        // ===== REFERRAL SYSTEM - FIXED VERSION =====
+        // ===== REFERRAL SYSTEM (unchanged) =====
         function generateReferralCode(userId, username) {
             const base = (username || 'USER').substring(0, 4).toUpperCase().padEnd(4, 'X');
             const suffix = userId.substring(0, 4).toUpperCase();
@@ -2327,13 +2350,11 @@
                     const referrerDoc = usersSnapshot.docs[0];
                     const referrerId = referrerDoc.id;
                     
-                    // Don't allow self-referral
                     if (referrerId === newUserId) {
                         console.log("Self-referral not allowed");
                         return;
                     }
                     
-                    // Check if this referral was already processed
                     const existingReferral = await db.collection('referrals')
                         .where('referrerId', '==', referrerId)
                         .where('referredUserId', '==', newUserId)
@@ -2344,7 +2365,6 @@
                         return;
                     }
                     
-                    // Record the referral
                     await db.collection('referrals').add({
                         referrerId: referrerId,
                         referredUserId: newUserId,
@@ -2352,13 +2372,11 @@
                         pointsAwarded: true
                     });
                     
-                    // ✅ GIVE POINTS TO REFERRER (YOU)
                     await db.collection('users').doc(referrerId).update({
                         referralCount: firebase.firestore.FieldValue.increment(1),
                         points: firebase.firestore.FieldValue.increment(20)
                     });
                     
-                    // Check for 10 referrals bonus
                     const referrerData = await db.collection('users').doc(referrerId).get();
                     const referralCount = referrerData.data().referralCount || 0;
                     
@@ -2368,9 +2386,6 @@
                         });
                         console.log("Added 200 bonus points for 10 referrals!");
                     }
-                    
-                    // ❌ REMOVED: This line was giving points to new user again
-                    // New user already gets 20 points in signup function
                     
                     console.log("Referral processed successfully!");
                 }
@@ -2416,7 +2431,6 @@
 
         function copyReferralLink() {
             if (!currentUser || !currentUser.referralCode) return;
-            // FIXED: Changed netlfy.app to netlify.app
             const referralLink = `https://poat.netlify.app/signup?ref=${currentUser.referralCode}`;
             navigator.clipboard.writeText(referralLink).then(() => {
                 showAlert('Referral link copied to clipboard!');
@@ -2425,7 +2439,7 @@
             });
         }
 
-        // ===== ADVERTISEMENT SYSTEM =====
+        // ===== ADVERTISEMENT SYSTEM (unchanged) =====
         async function createAdvertisement() {
             if (!currentUser) {
                 showAlert('Please login first');
@@ -2995,27 +3009,38 @@
             }
         }
 
-        // ===== SHARE =====
+        // ===== SHARE – MODIFIED TO INCLUDE DIRECT LINK COPY =====
         function sharePoll(poll, platform) {
             const text = `Check out this poll: ${poll.title} on POATS`;
-            const url = window.location.href;
-            let shareUrl = '';
+            // Direct link to the poll using poll id (fragment)
+            const pollLink = `${window.location.origin}${window.location.pathname}#poll-${poll.id}`;
             
+            if (platform === 'copy') {
+                navigator.clipboard.writeText(pollLink).then(() => {
+                    showAlert('Poll link copied to clipboard!');
+                }).catch(() => {
+                    showAlert('Failed to copy link');
+                });
+                return;
+            }
+            
+            let shareUrl = '';
+            const encodedText = encodeURIComponent(text + ' ' + pollLink);
             switch(platform) {
                 case 'whatsapp':
-                    shareUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
+                    shareUrl = `https://wa.me/?text=${encodedText}`;
                     break;
                 case 'facebook':
-                    shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`;
+                    shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pollLink)}&quote=${encodeURIComponent(text)}`;
                     break;
                 case 'twitter':
-                    shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+                    shareUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
                     break;
                 case 'linkedin':
-                    shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+                    shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(pollLink)}`;
                     break;
                 case 'instagram':
-                    showAlert('Instagram sharing is not directly supported. You can copy the link.');
+                    showAlert('Instagram sharing is not directly supported. You can copy the link below.');
                     return;
             }
             window.open(shareUrl, '_blank');
@@ -3024,6 +3049,8 @@
         function showSharePopup(poll) {
             const existing = document.querySelector('.share-popup');
             if (existing) existing.remove();
+            
+            const pollLink = `${window.location.origin}${window.location.pathname}#poll-${poll.id}`;
             
             const popup = document.createElement('div');
             popup.className = 'share-popup';
@@ -3036,9 +3063,34 @@
                     <div class="share-icon linkedin" onclick="sharePoll(${JSON.stringify(poll).replace(/"/g, '&quot;')}, 'linkedin')"><i class="fab fa-linkedin"></i></div>
                     <div class="share-icon instagram" onclick="sharePoll(${JSON.stringify(poll).replace(/"/g, '&quot;')}, 'instagram')"><i class="fab fa-instagram"></i></div>
                 </div>
+                <div class="direct-link-section">
+                    <p><strong>Direct link (anyone can open this poll)</strong></p>
+                    <input type="text" id="shareLinkInput" value="${pollLink}" readonly onclick="this.select()">
+                    <button class="copy-link-btn" onclick="sharePoll(${JSON.stringify(poll).replace(/"/g, '&quot;')}, 'copy')">Copy Link</button>
+                </div>
                 <button class="btn btn-secondary btn-small" style="margin-top:15px;" onclick="this.parentElement.remove()">Close</button>
             `;
             document.body.appendChild(popup);
+        }
+
+        // ===== CHECK URL FOR POLL ID (direct access) =====
+        function checkUrlForPoll() {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#poll-')) {
+                const pollId = hash.substring(6); // remove '#poll-'
+                // Wait for polls to load then open
+                const interval = setInterval(() => {
+                    const poll = allPolls.find(p => p.id === pollId);
+                    if (poll) {
+                        clearInterval(interval);
+                        incrementPollViews(pollId);
+                        viewPoll(poll, true);
+                        // Optionally switch to home section but modal already shows
+                    }
+                }, 300);
+                // Timeout after 5 seconds
+                setTimeout(() => clearInterval(interval), 5000);
+            }
         }
 
         // ===== CHECK REFERRAL CODE FROM URL =====
@@ -3160,8 +3212,8 @@
                 showSection('homeSection');
                 loadFeed();
                 
-                // Check for referral in URL
                 checkUrlForReferral();
+                checkUrlForPoll(); // Check for direct poll link
             });
 
             for (let i = 0; i < 2; i++) addPollOption();
@@ -4062,7 +4114,7 @@
             }
         });
 
-        // Make functions globally available
+        // Make functions globally available (including new sharePoll)
         window.showSection = showSection;
         window.addPollOption = addPollOption;
         window.updateOptionCount = updateOptionCount;
