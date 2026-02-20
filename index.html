@@ -14,6 +14,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-8KSBHHXKHQ'); // Replace G-XXXXXXXXXX with your GA4 Measurement ID
+    </script>
+
     <style>
         /* Styles unchanged – kept exactly as provided */
         * {
@@ -1533,6 +1543,7 @@
 </head>
 <body>
     <div class="container">
+        <!-- header – unchanged (kept as original) -->
         <div class="header">
             <h1><i class="fas fa-poll"></i> POATS</h1>
             <div class="header-actions" id="headerActions">
@@ -1568,6 +1579,7 @@
         </div>
 
         <div class="main-content" id="mainContent">
+            <!-- loading, sections – all unchanged -->
             <div id="loadingState" class="loading">
                 <div class="spinner"></div>
                 <p>Loading POATS...</p>
@@ -1577,6 +1589,7 @@
                 <i class="fas fa-exclamation-triangle"></i> Too many attempts. Please wait <span id="waitTime">60</span> seconds.
             </div>
 
+            <!-- homeSection, pollsSection, createSection, profileSection, advertiseSection, authSection – identical to original -->
             <div id="homeSection" class="section">
                 <div class="search-container">
                     <div class="search-box">
