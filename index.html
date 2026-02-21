@@ -2546,7 +2546,8 @@
                 switchAdTab('myads');
                 loadUserAds();
                 
-                // Optional: refresh feed if home is active
+                // Reload ads cache
+                await loadAdvertisements();
                 if (document.getElementById('homeSection').classList.contains('active-section')) {
                     loadFeed();
                 }
@@ -2638,38 +2639,6 @@
             }
         }
 
-        async function loadActiveAds() {
-            try {
-                console.log('Loading active ads...');
-                const now = new Date();
-                const snapshot = await db.collection('advertisements')
-                    .where('active', '==', true)
-                    .get();
-                
-                console.log(`Fetched ${snapshot.size} ads with active=true`);
-                
-                const activeAds = [];
-                snapshot.forEach(doc => {
-                    const ad = doc.data();
-                    const expiresAt = ad.expiresAt?.toDate ? ad.expiresAt.toDate() : new Date(ad.expiresAt);
-                    if (expiresAt > now) {
-                        activeAds.push({ id: doc.id, ...ad });
-                    } else {
-                        // Mark as expired in background
-                        db.collection('advertisements').doc(doc.id).update({ active: false })
-                            .then(() => console.log(`Ad ${doc.id} expired and deactivated`))
-                            .catch(err => console.error('Failed to deactivate ad', err));
-                    }
-                });
-                
-                console.log(`${activeAds.length} active ads after expiration check`);
-                return activeAds;
-            } catch (error) {
-                console.error('Error loading active ads:', error);
-                return [];
-            }
-        }
-
         // ===== CLEANUP OLD POLLS =====
         async function cleanupOldPolls() {
             try {
@@ -2696,23 +2665,51 @@
         let currentFeedType = 'global';
         let currentFilter = 'recent';
 
+        // ===== ADS CACHE =====
+        let adsCache = [];
+
+        async function loadAdvertisements() {
+            try {
+                const snapshot = await db.collection("ads")
+                    .orderBy("createdAt", "desc")
+                    .get();
+
+                adsCache = [];
+
+                const now = Date.now();
+
+                snapshot.forEach(doc => {
+                    const ad = doc.data();
+                    // Check if ad is still active (within 6 hours)
+                    if (ad.createdAt && (now - ad.createdAt.toMillis()) < 6 * 60 * 60 * 1000) {
+                        adsCache.push({
+                            id: doc.id,
+                            ...ad
+                        });
+                    }
+                });
+
+                console.log("Ads loaded:", adsCache.length);
+
+            } catch (error) {
+                console.error("Error loading ads:", error);
+            }
+        }
+
         // ===== SEARCH =====
         function handleSearchInput(value) {
             const searchTerm = value.toLowerCase().trim();
             const clearBtn = document.getElementById('clearSearch');
-            const searchBadge = document.getElementById('searchResultsBadge');
             
             currentSearchTerm = searchTerm;
             
             if (searchTerm.length > 0) {
                 clearBtn.classList.add('active');
-                searchUserPosts(searchTerm);
-                searchBadge.style.display = 'inline-block';
             } else {
                 clearBtn.classList.remove('active');
-                searchBadge.style.display = 'none';
-                loadFeed();
             }
+            
+            loadFeed(); // reload feed with search filter
         }
 
         function clearSearch() {
@@ -2720,35 +2717,12 @@
             handleSearchInput('');
         }
 
-        function searchUserPosts(searchTerm) {
-            const feedContainer = document.getElementById('feedContainer');
-            
-            if (!searchTerm) {
-                loadFeed();
-                return;
-            }
-            
-            const basePolls = getFilteredPolls();
-            const filteredPolls = basePolls.filter(poll => 
-                poll.creatorName && poll.creatorName.toLowerCase().includes(searchTerm)
-            );
-            
-            if (filteredPolls.length === 0) {
-                feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No polls found for "' + escapeHtml(searchTerm) + '"</p></div>';
-                return;
-            }
-            
-            feedContainer.innerHTML = '';
-            filteredPolls.forEach(poll => feedContainer.appendChild(createPollCard(poll)));
-        }
-
         // ===== FEED & FILTER =====
         function setFeedType(type) {
             currentFeedType = type;
             document.getElementById('feedGlobalBtn').classList.toggle('active', type === 'global');
             document.getElementById('feedLocalBtn').classList.toggle('active', type === 'local');
-            if (currentSearchTerm) searchUserPosts(currentSearchTerm);
-            else loadFeed();
+            loadFeed();
         }
 
         function setFilter(filter) {
@@ -2761,6 +2735,12 @@
         function getFilteredPolls() {
             let polls = currentFeedType === 'global' || !currentUser ? allPolls : allPolls.filter(poll => poll.country === currentUser.country);
             
+            // Apply search filter
+            if (currentSearchTerm) {
+                polls = polls.filter(poll => poll.creatorName && poll.creatorName.toLowerCase().includes(currentSearchTerm));
+            }
+            
+            // Apply sort
             switch(currentFilter) {
                 case 'mostvoted':
                     polls.sort((a, b) => (b.totalVotes || 0) - (a.totalVotes || 0));
@@ -3144,6 +3124,119 @@
             }
         }
 
+        // ===== RENDER FUNCTIONS FOR FEED =====
+        function renderAd(ad) {
+            return `
+                <div class="advertisement-card" onclick="${ad.link ? `window.open('${ad.link}', '_blank')` : ''}">
+                    <div class="ad-label">Sponsored</div>
+                    ${ad.imageUrl ? `<img src="${ad.imageUrl}" class="ad-image">` : ''}
+                    <div>
+                        <strong>${escapeHtml(ad.title)}</strong>
+                        <p style="font-size:0.8rem;">${escapeHtml(ad.description || '')}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPoll(poll) {
+            const totalVotes = poll.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
+            const timeAgo = getTimeAgo(poll.createdAt);
+            
+            let mediaHtml = '';
+            if (poll.mediaUrl) {
+                if (poll.mediaType === 'image') {
+                    mediaHtml = `<img src="${escapeHtml(poll.mediaUrl)}" alt="Poll image" class="poll-image" onclick="event.stopPropagation(); openFullscreenImage('${escapeHtml(poll.mediaUrl)}')">`;
+                } else if (poll.mediaType === 'video') {
+                    mediaHtml = `<video src="${escapeHtml(poll.mediaUrl)}" controls class="poll-video"></video>`;
+                }
+            }
+            
+            const categoryTag = poll.category && poll.category !== 'All' ? 
+                `<span class="category-tag"><i class="fas fa-tag"></i> ${escapeHtml(poll.category)}</span>` : '';
+            
+            const avatarHtml = poll.creatorProfilePhoto ? 
+                `<img src="${escapeHtml(poll.creatorProfilePhoto)}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : 
+                escapeHtml(poll.creatorName?.[0] || 'U');
+            
+            return `
+                <div class="poll-card">
+                    <div class="card-header">
+                        <div class="avatar" onclick="event.stopPropagation(); viewUserProfile('${poll.createdBy}')">
+                            ${avatarHtml}
+                        </div>
+                        <div class="user-info">
+                            <h4>
+                                <span class="username-link" onclick="event.stopPropagation(); viewUserProfile('${poll.createdBy}')">${escapeHtml(poll.creatorName || 'Anonymous')}</span>
+                            </h4>
+                            <div class="time"><i class="far fa-clock"></i> ${escapeHtml(timeAgo)}</div>
+                        </div>
+                    </div>
+                    <div class="poll-title">${escapeHtml(poll.title)}</div>
+                    ${mediaHtml}
+                    <div class="poll-meta">
+                        ${categoryTag}
+                        <span><i class="fas fa-vote-yea"></i> ${totalVotes} votes</span>
+                        <span><i class="fas fa-eye"></i> ${poll.views || 0} views</span>
+                        <span><i class="fas fa-comment"></i> ${poll.commentCount || 0} comments</span>
+                        ${poll.country ? `<span><i class="fas fa-globe"></i> ${escapeHtml(poll.country)}</span>` : ''}
+                    </div>
+                    <div class="poll-actions">
+                        <button class="action-btn" onclick="event.stopPropagation(); viewPollWithComments('${poll.id}')">
+                            <i class="fas fa-comment"></i>
+                            <span>Comments ${poll.commentCount ? `<span class="comment-count">${poll.commentCount}</span>` : ''}</span>
+                        </button>
+                        <button class="action-btn" onclick="event.stopPropagation(); showSharePopup(${JSON.stringify(poll).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-share-alt"></i> Share
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===== LOAD FEED =====
+        async function loadFeed() {
+            const feedContainer = document.getElementById('feedContainer');
+            const filteredPolls = getFilteredPolls();
+            
+            // Update feed title based on filter
+            const feedTitle = document.getElementById('feedTitle');
+            if (currentFilter === 'recent') feedTitle.textContent = 'Recent Polls';
+            else if (currentFilter === 'mostvoted') feedTitle.textContent = 'Most Voted Polls';
+            else if (currentFilter === 'mostviewed') feedTitle.textContent = 'Most Viewed Polls';
+            else if (currentFilter === 'trending') feedTitle.textContent = 'Trending Polls';
+            
+            // Handle search badge
+            const searchBadge = document.getElementById('searchResultsBadge');
+            if (currentSearchTerm) {
+                searchBadge.style.display = 'inline-block';
+            } else {
+                searchBadge.style.display = 'none';
+            }
+            
+            if (filteredPolls.length === 0 && adsCache.length === 0) {
+                if (currentFeedType === 'local' && currentUser) {
+                    feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-globe"></i><p>No polls in your country yet.</p></div>';
+                } else {
+                    feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet</p><button class="btn btn-primary" style="margin-top: 15px;" onclick="showSection(\'createSection\')">Create the First Poll</button></div>';
+                }
+                return;
+            }
+            
+            // Render feed with ads every 4 posts
+            feedContainer.innerHTML = '';
+            let adIndex = 0;
+            
+            filteredPolls.forEach((poll, index) => {
+                feedContainer.innerHTML += renderPoll(poll);
+                
+                if ((index + 1) % 4 === 0 && adsCache.length > 0) {
+                    const ad = adsCache[adIndex % adsCache.length];
+                    feedContainer.innerHTML += renderAd(ad);
+                    adIndex++;
+                }
+            });
+        }
+
         // ===== INIT =====
         document.addEventListener('DOMContentLoaded', () => {
             loadDarkModePreference();
@@ -3244,7 +3337,7 @@
                 }
                 
                 await loadPolls();
-                await loadUsers();
+                await loadAdvertisements();
                 document.getElementById('loadingState').style.display = 'none';
                 showSection('homeSection');
                 loadFeed();
@@ -3288,60 +3381,12 @@
                 
                 displayPolls();
                 if (document.getElementById('homeSection').classList.contains('active-section')) {
-                    if (currentSearchTerm) searchUserPosts(currentSearchTerm);
-                    else loadFeed();
+                    loadFeed();
                 }
             } catch (error) {
                 console.error("Error loading polls:", error);
                 showAlert('Error loading polls');
             }
-        }
-
-        async function loadFeed() {
-            const feedContainer = document.getElementById('feedContainer');
-            const filteredPolls = getFilteredPolls();
-            const activeAds = await loadActiveAds();
-            
-            if (filteredPolls.length === 0 && activeAds.length === 0) {
-                if (currentFeedType === 'local' && currentUser) {
-                    feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-globe"></i><p>No polls in your country yet.</p></div>';
-                } else {
-                    feedContainer.innerHTML = '<div class="empty-state"><i class="fas fa-poll"></i><p>No polls yet</p><button class="btn btn-primary" style="margin-top: 15px;" onclick="showSection(\'createSection\')">Create the First Poll</button></div>';
-                }
-                return;
-            }
-            
-            feedContainer.innerHTML = '';
-            const mixedItems = [];
-            filteredPolls.forEach(poll => mixedItems.push({ type: 'poll', data: poll }));
-            activeAds.forEach(ad => mixedItems.push({ type: 'ad', data: ad }));
-            mixedItems.sort(() => Math.random() - 0.5);
-            
-            mixedItems.forEach(item => {
-                if (item.type === 'poll') feedContainer.appendChild(createPollCard(item.data));
-                else feedContainer.appendChild(createAdCard(item.data));
-            });
-        }
-
-        function createAdCard(ad) {
-            const div = document.createElement('div');
-            div.className = 'advertisement-card small';
-            
-            let imageHtml = '';
-            if (ad.imageUrl) imageHtml = `<img src="${ad.imageUrl}" alt="Ad" class="ad-image" onerror="this.style.display='none'">`;
-            
-            div.innerHTML = `
-                <span class="ad-label">Ad</span>
-                ${imageHtml}
-                <div class="ad-content">
-                    <div class="ad-title">${escapeHtml(ad.title)}</div>
-                    <div class="ad-description">${escapeHtml(ad.description.substring(0, 50))}${ad.description.length > 50 ? '...' : ''}</div>
-                    ${ad.link ? `<a href="${ad.link}" target="_blank" class="ad-link" onclick="event.stopPropagation()">Learn more</a>` : ''}
-                </div>
-            `;
-            
-            if (ad.link) div.onclick = () => window.open(ad.link, '_blank');
-            return div;
         }
 
         async function loadUsers() {
@@ -3377,8 +3422,7 @@
             }
             if (sectionId === 'advertiseSection' && currentUser) loadReferralData();
             if (sectionId === 'homeSection') {
-                if (currentSearchTerm) searchUserPosts(currentSearchTerm);
-                else loadFeed();
+                loadFeed();
             }
         }
 
@@ -4137,6 +4181,7 @@
                 for (let i = 0; i < 2; i++) addPollOption();
                 
                 await loadPolls();
+                await loadAdvertisements(); // Refresh ads after poll creation
                 if (document.getElementById('profileSection').classList.contains('active-section')) loadUserProfile();
                 
                 showSection('homeSection');
@@ -4183,7 +4228,7 @@
         window.uploadProfilePhoto = uploadProfilePhoto;
         window.copyReferralLink = copyReferralLink;
         window.switchAdTab = switchAdTab;
-        window.createAdvertisement = createAdvertisement;   // FIXED version
+        window.createAdvertisement = createAdvertisement;
         window.fillAdSuggestion = fillAdSuggestion;
         window.previewAdImage = previewAdImage;
         window.removeAdImage = removeAdImage;
